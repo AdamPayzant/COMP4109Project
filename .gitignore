@@ -1,0 +1,10 @@
+# Latex build fluff
+*.aux
+*.bcf
+*.fbd_latexmk
+*.fls
+*.log
+*.synctex.gz
+
+# Node stuff
+node_modules/
