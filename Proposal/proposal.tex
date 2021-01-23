@@ -1,0 +1,82 @@
+\documentclass[titlepage]{article}
+
+\usepackage{geometry}
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+
+\geometry{margin=1in}
+
+\title{\textit{Name for project} \\
+    \large COMP4109 Group Project
+}
+
+% TODO: Fill in names and S#
+\author{Adam Payzant \\ 
+    \texttt{101082175} \\
+    \and
+    Kelvin Ratsamany \\
+    \texttt{}
+    \and
+    William So \\ 
+    \texttt{} \\
+    \and
+    Anders Sonstenes \\ 
+    \texttt{}
+}
+
+\begin{document}
+    \maketitle
+
+    % High level problem statement, goal, challenges, and what approaches have already been proposed
+    \section{Introduction}
+
+    For this project, we will be implementing a secure messaging and video app. 
+
+    % Give indepth explination of the problem. Talk about the failings of other secure messaging systems
+    \section{Background}
+
+    In the modern messaging space, all mainstream options have at least a few failings or tradeoffs that fail the goal of absolute security. 
+    SMS (conventional texting) is highly susceptable to transmission interception, does not transmit securely, and is easily traced back to the sender/recipient.
+    \footnote{\url{https://www.popularmechanics.com/technology/security/a29789903/what-is-sms/}}
+    Apple's iMessage offers end-to-end encryption (which means the message is sent encrypted and can only be unencrypted by the recipient), but the messages are still stored on Apple's servers and are only usable on Apple devices.
+    In 2021, WhatsApp changed their privacy policy to allow more sharing of user data towards Facebook, which can include some messages. 
+    \footnote{\url{https://www.androidpolice.com/2021/01/12/whatsapps-new-terms-of-service-are-a-facebook-or-die-ultimatum/}}
+    Even the posterchild of secure messaging apps, Signal, has tradeoffs as data still goes through their servers, can be stored on their servers, and prevents anonymity by requiring a phone number.
+    \footnote{\url{https://nakedsecurity.sophos.com/2020/05/22/signal-secure-messaging-can-now-identify-you-without-a-phone-number/}}\\
+
+    Based on these failings, our app aims to mitigate them by following these principles:
+    \begin{enumerate}
+        \item Message Security - A message should be encrypted before sending and can only by the recipient upon recieving the message
+        \item Safe Storage - Messages should be stored in safe way and should strive to gurantee complete deletion upon request
+        \item Anonymity - Users should be anonymous in the eyes of the system. This increases user safety by increasing the work factor to attack an individual
+    \end{enumerate}
+    Each of these principles are vital for a number of reasons.
+    Message security is vital as there is no practical way to gurantee secure transmission over the internet.
+    When sending unsecure data, a Man-in-the-Middle Attack, an attack where data in transit is intercepted, read, then send to the intended target, can easily collect user information.
+    \footnote{\url{https://www.csoonline.com/article/3340117/what-is-a-man-in-the-middle-attack-how-mitm-attacks-work-and-how-to-prevent-them.html}}
+    Message security can be achieved by using a public-key encryption method, where the data is encrypted using the recipient's public key, and only decrypted by the recipient's secret private key.
+    This will mitigate any attacks occuring during data transmission.
+    Safe Storage is critical as attacks can still occur after the message has been recieved.
+    Storing messages unencrypted posing the risk of that storage service being broken into, and allows an attack to collect the contents.
+    In addition, even if the stored data is encrypted, it may not provide sufficient work factor, meaning an attack must take more effort than the data is worth, to actually be considered secure.
+    \footnote{van Oorschot, Paul C. \textit{Computer Security and the Internet: Tools and Jewels}. Springer, 25 Sept 2019}
+    Not to mention, while an encryption method today may be considered secure, in 5 years the method may no longer be considered to be a sufficient work factor.
+    Finally, anonymity is vital to making a secure messaging system.
+    Making users anonymous in the eyes of the system adds yet another layer of security should the system be breached.
+    Doing so increases the work required for an attacker to pinpoint a user's identity, making a security breach less damaging.
+
+    % Talk about the archetecture of our system
+    \section{System Descrption}
+
+    % Do some timeline for our development
+    \section{Implementation Plan}
+
+    \newpage
+    \section*{Bibliography}
+\end{document}
