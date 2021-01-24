@@ -10,12 +10,21 @@
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 \usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{setspace}
 
 \geometry{margin=1in}
+\onehalfspacing
 
 \title{\textit{Name for project} \\
     \large COMP4109 Group Project
 }
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{COMP4109 Project Proposal}
+\rfoot{\thepage}
+
 
 % TODO: Fill in S#
 \author{Adam Payzant \\ 
@@ -122,8 +131,16 @@
     When a user registers for the system, they will create a username and key pair and provide a host IP. 
     The key will be generated client side (will be obscured from the user for quality of life) so that the server can never know the secret private key.
     User authentication can be handled by by sending a secret encrypted with their public key and expect the decrypted secret.
+    The actions of the server are strictly triggered by user requests and all will access the database.
+    The use cases of the server can be seen in figure \ref{serverUse}.
 
-    % TODO: Should probably do a diagram for this one too
+    \begin{center}
+        \begin{figure}[!ht]
+            \includegraphics[scale=.5]{graphics/ServerUseCase.png}
+            \label{serverUse}
+            \caption{A use case diagram of user requests to the server}
+        \end{figure}
+    \end{center}
 
     \subsection{Tech Stack}
 
@@ -138,6 +155,7 @@
     This project seems relatively easy, but without more indepth research, the apparent ease may be deceptive.
     To add some depth to this project if it turns out to be too simple, while also giving some leeway in case it turns out to be harder than expected, we've added some stretch goals.
     \begin{itemize}
+        \item Provide client hosting, just make individual docker containers serverside
         \item For the host, make an additional program with root permissions to read the private key, increasing security of the key
         \item Support more than just Linux
         \item Do some kind of checksum for the messages to gurantee conversation's integrity (not sure how feasible that is)
