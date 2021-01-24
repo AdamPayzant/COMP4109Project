@@ -47,6 +47,13 @@
     \section{Introduction}
 
     For this project, we will be implementing a secure messaging and video app.
+    The primary objective of this space is to provide a convienient way to send text messages and videos calls (both will be generalized as ``messages'') to others while not having to worry about the contents of the messages being breached.
+    This has historically been a challenge as it's difficult, if not impossible, to gurantee transmission safety in your average modern network, as well as safely storing the messages after recieving them.
+    Many attempts at solving this problem exist such as SMS, Apple's iMessage, WhatsApp, Signal, and many more.
+    The majority of these solutions use some form encryption, passing through a central server, and then finally sent to their destination.
+    In contrast, the Skype protocol system to not use a central server.
+    However, we've noted all of these have notable failings or prioritized convience over security.
+    As a result, we've opted to use peer-to-peer transmission with end-to-end encryption to maximize security.
 
     % Give indepth explination of the problem. Talk about the failings of other secure messaging systems
     \section{Background}
@@ -57,6 +64,7 @@
     Apple's iMessage offers end-to-end encryption (which means the message is sent encrypted and can only be unencrypted by the recipient), but the messages are still stored on Apple's servers and are only usable on Apple devices.
     In 2021, WhatsApp changed their privacy policy to allow more sharing of user data towards Facebook, which can include some messages. 
     \footnote{\url{https://www.androidpolice.com/2021/01/12/whatsapps-new-terms-of-service-are-a-facebook-or-die-ultimatum/}}
+    Skype, while offering peer-to-peer messaging, utilized the vulnerable RC4 encryption protocol creating a whole new slew of security risks.
     Even the posterchild of secure messaging apps, Signal, has tradeoffs as data still goes through their servers, can be stored on their servers, and prevents anonymity by requiring a phone number.
     \footnote{\url{https://nakedsecurity.sophos.com/2020/05/22/signal-secure-messaging-can-now-identify-you-without-a-phone-number/}}\\
 
@@ -171,6 +179,8 @@
 
     Unfortunately, this system architecture cannot fully maintain user anonymity. 
     While this system does store a user's IP and a username, the username can be fully anonymous and the IP can still be setup through a proxy so indentifying information can be reduced.
+    Because both parties in a conversation should have the records, there's no gurantee if one deletes the message the other also is. 
+    We believe there has still been adequite risk mitigation, as only those two should be able to access the messages.
 
     % Do some timeline for our development
     \section{Implementation Plan}
