@@ -9,6 +9,7 @@
 \usepackage{amsfonts}       % blackboard math symbols
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
+\usepackage{graphicx}
 
 \geometry{margin=1in}
 
@@ -16,7 +17,7 @@
     \large COMP4109 Group Project
 }
 
-% TODO: Fill in names and S#
+% TODO: Fill in S#
 \author{Adam Payzant \\ 
     \texttt{101082175} \\
     \and
@@ -36,7 +37,7 @@
     % High level problem statement, goal, challenges, and what approaches have already been proposed
     \section{Introduction}
 
-    For this project, we will be implementing a secure messaging and video app. 
+    For this project, we will be implementing a secure messaging and video app.
 
     % Give indepth explination of the problem. Talk about the failings of other secure messaging systems
     \section{Background}
@@ -71,12 +72,88 @@
     Making users anonymous in the eyes of the system adds yet another layer of security should the system be breached.
     Doing so increases the work required for an attacker to pinpoint a user's identity, making a security breach less damaging.
 
-    % Talk about the archetecture of our system
+    % Talk about the architecture of our system
     \section{System Descrption}
+
+    \subsection{High Level Architecture}
+
+    This system will utilize a peer-to-peer system, with a central server to connect users.
+    When a user wants to send a message, it first sends a request to the server for the user's public key and IP (individual clients do not store this to simplify key changing process).
+    After recieving this information, the user can then use the key to encrypt the data, either a message or video call, and send it directly to the recipient.
+    A sequence diagram of what a sending a message would be like can be seen in figure \ref{sequence}.
+    From our current research, video calling should effectively be the same, but concurrently be recieving a message as well.
+    All messages will be securely stored by both the sender and recipient.
+
+    \begin{center}
+        \begin{figure}[!ht]
+            \includegraphics[scale=.5]{graphics/SequenceDiagram.png}
+            \label{sequence}
+            \caption{Messaging sequence diagram}
+        \end{figure}
+    \end{center}
+
+    The client's architecture is one of the more interesting sides of this project.
+    Most of the best messaging apps offer some crossplatform support, and conversation histories will be shared between devices.
+    We wanted to bring this feature into our own app, but the P2P nature of messaging made this challenging.
+    To get around this, we've opted to have each client have their own host system.
+    While this decision makes it no longer a true peer-to-peer system, it's a tradeoff we've deemed acceptable and it can still remain decentralized from our own servers.
+    This allows the modern convience of linked devices while also keeping data off unknown servers.
+    With the addition of the host, the flow of a message can be seen in figure \ref{clientHost}.
+    As shown, a message sent from a client's device is first sent to their host.
+    As previously shown, the host will access the central server to get the recipeint's IP, then send the message along to the recipeint's host.
+    The sender's host will also update all device's conversation to reflect the new message.
+    When the host recieves the message, it will then distribute it to all client devices.
+    However, as seen in the diagram, this hierarchy does not occur for video calling.
+    The host structure could a decent amount of latency.
+    While this isn't a critical for message sending, it would make video calling suboptimal, especially if any link in the chain has poor network speeds.
+    To avoid this issue, a direct link is established between the two devices video calling.
+
+    \begin{center}
+        \begin{figure}[!ht]
+            \includegraphics[scale=.5]{graphics/clientHost.png}
+            \label{clientHost}
+            \caption{How a message is sent and a video call is performed}
+        \end{figure}
+    \end{center}
+
+    Compared to the client architecture, the central server's architecture is fairly boring.
+    This server's primary goal is to manage users.
+    To this end, it handles user registration, tracks user's public key and IP, and serves it to user request.
+    When a user registers for the system, they will create a username and key pair and provide a host IP. 
+    The key will be generated client side (will be obscured from the user for quality of life) so that the server can never know the secret private key.
+    User authentication can be handled by by sending a secret encrypted with their public key and expect the decrypted secret.
+
+    % TODO: Should probably do a diagram for this one too
+
+    \subsection{Tech Stack}
+
+    The current tech stack planned for this project is to use gRPC for the transmission of data.
+    For server side storage we will likely use a noSQL database like MongoDB as it will be more performantly scalable because our data will not be relational.
+    We have no final decision on the language to implement in. 
+    We are currently leaning towards Go for the server and client hosts, application implementations may vary however.
+    Depending on what we choose support, some languages may be optimal for different OS's, this is why gRPC was an intentional choice to maintain compatibility between languages.
+
+    \subsection{Stretch Targets}
+
+    This project seems relatively easy, but without more indepth research, the apparent ease may be deceptive.
+    To add some depth to this project if it turns out to be too simple, while also giving some leeway in case it turns out to be harder than expected, we've added some stretch goals.
+    \begin{itemize}
+        \item For the host, make an additional program with root permissions to read the private key, increasing security of the key
+        \item Support more than just Linux
+        \item Do some kind of checksum for the messages to gurantee conversation's integrity (not sure how feasible that is)
+    \end{itemize}
+
+    \subsection{Potential Challenges}
+
+    Video chatting will likely be the most difficult part of this project.
+    While messaging seems like a relatively simple process using gRPC and some off-the-shelf encryption libraries, video streaming seems like more of a challenge.
+    The actual encryption method for video is relatively trivial with some more time tested libraries, processing, sending, and recieving the video may be more challenging.
+
+    \subsection{Architectural Failings}
+
+    Unfortunately, this system architecture cannot fully maintain user anonymity. 
+    While this system does store a user's IP and a username, the username can be fully anonymous and the IP can still be setup through a proxy so indentifying information can be reduced.
 
     % Do some timeline for our development
     \section{Implementation Plan}
-
-    \newpage
-    \section*{Bibliography}
 \end{document}
