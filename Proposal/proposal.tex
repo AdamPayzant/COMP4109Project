@@ -138,7 +138,7 @@
     To this end, it handles user registration, tracks user's public key and IP, and serves it to user request.
     When a user registers for the system, they will create a username and key pair and provide a host IP. 
     The key will be generated client side (will be obscured from the user for quality of life) so that the server can never know the secret private key.
-    User authentication can be handled by by sending a secret encrypted with their public key and expect the decrypted secret.
+    User authentication can be handled by just sending an authentication token encrypted with the users public key, and expecting the unencrypted token to be sent with subsequent requests.
     The actions of the server are strictly triggered by user requests and all will access the database.
     The use cases of the server can be seen in figure \ref{serverUse}.
 
@@ -173,6 +173,7 @@
 
     Video chatting will likely be the most difficult part of this project.
     While messaging seems like a relatively simple process using gRPC and some off-the-shelf encryption libraries, video streaming seems like more of a challenge.
+    Due to some limitations of gRPC, we may need to use a different technology for this, but that will require research beyond this proposal.
     The actual encryption method for video is relatively trivial with some more time tested libraries, processing, sending, and recieving the video may be more challenging.
 
     \subsection{Architectural Failings}
