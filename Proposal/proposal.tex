@@ -27,17 +27,17 @@
 
 
 % TODO: Fill in S#
-\author{Adam Payzant \\ 
+\author{Adam Payzant \\
     \texttt{101082175} \\
     \and
     Kelvin Ratsamany \\
     \texttt{}
     \and
-    William So \\ 
+    William So \\
     \texttt{} \\
     \and
-    Anders Sonstenes \\ 
-    \texttt{}
+    Anders Sonstenes \\
+    \texttt{101013731}
 }
 
 \begin{document}
@@ -58,11 +58,11 @@
     % Give indepth explination of the problem. Talk about the failings of other secure messaging systems
     \section{Background}
 
-    In the modern messaging space, all mainstream options have at least a few failings or tradeoffs that fail the goal of absolute security. 
+    In the modern messaging space, all mainstream options have at least a few failings or tradeoffs that fail the goal of absolute security.
     SMS (conventional texting) is highly susceptable to transmission interception, does not transmit securely, and is easily traced back to the sender/recipient.
     \footnote{\url{https://www.popularmechanics.com/technology/security/a29789903/what-is-sms/}}
     Apple's iMessage offers end-to-end encryption (which means the message is sent encrypted and can only be unencrypted by the recipient), but the messages are still stored on Apple's servers and are only usable on Apple devices.
-    In 2021, WhatsApp changed their privacy policy to allow more sharing of user data towards Facebook, which can include some messages. 
+    In 2021, WhatsApp changed their privacy policy to allow more sharing of user data towards Facebook, which can include some messages.
     \footnote{\url{https://www.androidpolice.com/2021/01/12/whatsapps-new-terms-of-service-are-a-facebook-or-die-ultimatum/}}
     Skype, while offering peer-to-peer messaging, utilized the vulnerable RC4 encryption protocol creating a whole new slew of security risks.
     Even the posterchild of secure messaging apps, Signal, has tradeoffs as data still goes through their servers, can be stored on their servers, and prevents anonymity by requiring a phone number.
@@ -136,7 +136,7 @@
     Compared to the client architecture, the central server's architecture is fairly boring.
     This server's primary goal is to manage users.
     To this end, it handles user registration, tracks user's public key and IP, and serves it to user request.
-    When a user registers for the system, they will create a username and key pair and provide a host IP. 
+    When a user registers for the system, they will create a username and key pair and provide a host IP.
     The key will be generated client side (will be obscured from the user for quality of life) so that the server can never know the secret private key.
     User authentication can be handled by just sending an authentication token encrypted with the users public key, and expecting the unencrypted token to be sent with subsequent requests.
     The actions of the server are strictly triggered by user requests and all will access the database.
@@ -154,7 +154,7 @@
 
     The current tech stack planned for this project is to use gRPC for the transmission of data.
     For server side storage we will likely use a noSQL database like MongoDB as it will be more performantly scalable because our data will not be relational.
-    We have no final decision on the language to implement in. 
+    We have no final decision on the language to implement in.
     We are currently leaning towards Go for the server and client hosts, application implementations may vary however.
     Depending on what we choose support, some languages may be optimal for different OS's, this is why gRPC was an intentional choice to maintain compatibility between languages.
 
@@ -178,9 +178,9 @@
 
     \subsection{Architectural Failings}
 
-    Unfortunately, this system architecture cannot fully maintain user anonymity. 
+    Unfortunately, this system architecture cannot fully maintain user anonymity.
     While this system does store a user's IP and a username, the username can be fully anonymous and the IP can still be setup through a proxy so indentifying information can be reduced.
-    Because both parties in a conversation should have the records, there's no gurantee if one deletes the message the other also is. 
+    Because both parties in a conversation should have the records, there's no gurantee if one deletes the message the other also is.
     We believe there has still been adequite risk mitigation, as only those two should be able to access the messages.
 
     % Do some timeline for our development
