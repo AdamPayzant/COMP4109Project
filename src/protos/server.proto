@@ -1,0 +1,53 @@
+syntax="proto3";
+
+service Server {
+    rpc Register (UserReg) returns (Status);
+    rpc getToken (username) returns (authKey);
+
+    rpc UpdateIP (IPupdate) returns (Status);
+    rpc UpdateKey (KeyUpdate) returns (Status);
+
+    rpc getUser (username) returns (UserInfo);
+}
+
+// Generic Response message
+// If sttus is true, no error
+message Status {
+    bool status = 1;
+    int32 error = 2;
+}
+
+// Sends a username username
+message username {
+    string username = 1;
+}
+
+// Sends an encrypted auth key
+message authKey {
+    string authKey = 1;
+}
+
+// User registration message
+message UserReg {
+    string username = 1;
+    string key = 2;
+    string ip = 3;
+}
+
+// User IP update
+message IPupdate {
+    string username = 1;
+    string authKey = 2;
+    string newIP = 3;
+}
+
+message KeyUpdate {
+    string username = 1;
+    string authKey = 2;
+    string newKey = 3;
+}
+
+message UserInfo {
+    string publicKey = 1;
+    string IP = 2;
+}
