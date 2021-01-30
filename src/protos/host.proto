@@ -1,6 +1,6 @@
 syntax="proto3";
 
-option go_package="smvsHost";
+option go_package="github.com/AdamPayzant/COMP4109Project/tree/master/src/protos/smvsHost";
 
 service clientHost {
     rpc ReKey(Empty) returns (Status); // Requests client's host to change keys
