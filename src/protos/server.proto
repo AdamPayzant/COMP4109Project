@@ -1,5 +1,7 @@
 syntax="proto3";
 
+option go_package = "smvsServer";
+
 service Server {
     rpc Register (UserReg) returns (Status);
     rpc getToken (username) returns (authKey);
@@ -7,14 +9,14 @@ service Server {
     rpc UpdateIP (IPupdate) returns (Status);
     rpc UpdateKey (KeyUpdate) returns (Status);
 
+    rpc searchUser(UserQuery) returns (UserList);
     rpc getUser (username) returns (UserInfo);
 }
 
 // Generic Response message
-// If sttus is true, no error
+// In will just contains some magic number error codes
 message Status {
-    bool status = 1;
-    int32 error = 2;
+    int32 status = 1;
 }
 
 // Sends a username username
@@ -45,6 +47,14 @@ message KeyUpdate {
     string username = 1;
     string authKey = 2;
     string newKey = 3;
+}
+
+message UserQuery {
+    string query = 1;
+}
+
+message UserList {
+    repeated string users = 1;
 }
 
 message UserInfo {
