@@ -50,7 +50,7 @@
     The primary objective of this space is to provide a convienient way to send text messages and videos calls (both will be generalized as ``messages'') to others while not having to worry about the contents of the messages being breached.
     This has historically been a challenge as it's difficult, if not impossible, to gurantee transmission safety in your average modern network, as well as safely storing the messages after recieving them.
     Many attempts at solving this problem exist such as SMS, Apple's iMessage, WhatsApp, Signal, and many more.
-    The majority of these solutions use some form encryption, passing through a central server, and then finally sent to their destination.
+    The majority of these solutions use some form encryption, passing through a central server, and then finally being sent along to their destination.
     In contrast, the Skype protocol system to not use a central server.
     However, we've noted all of these have notable failings or prioritized convience over security.
     As a result, we've opted to use peer-to-peer transmission with end-to-end encryption to maximize security.
@@ -70,12 +70,12 @@
 
     Based on these failings, our app aims to mitigate them by following these principles:
     \begin{enumerate}
-        \item Message Security - A message should be encrypted before sending and can only by the recipient upon recieving the message
-        \item Safe Storage - Messages should be stored in safe way and should strive to gurantee complete deletion upon request
+        \item Message Security - A message should be encrypted before sending and can only be decrypted by the recipient upon recieving the message
+        \item Safe Storage - Messages should be stored in safe way and should strive to gaurantee complete deletion upon request
         \item Anonymity - Users should be anonymous in the eyes of the system. This increases user safety by increasing the work factor to attack an individual
     \end{enumerate}
     Each of these principles are vital for a number of reasons.
-    Message security is vital as there is no practical way to gurantee secure transmission over the internet.
+    Message security is vital as there is no practical way to gaurantee secure transmission over the internet.
     When sending unsecure data, a Man-in-the-Middle Attack, an attack where data in transit is intercepted, read, then send to the intended target, can easily collect user information.
     \footnote{\url{https://www.csoonline.com/article/3340117/what-is-a-man-in-the-middle-attack-how-mitm-attacks-work-and-how-to-prevent-them.html}}
     Message security can be achieved by using a public-key encryption method, where the data is encrypted using the recipient's public key, and only decrypted by the recipient's secret private key.
@@ -90,9 +90,17 @@
     Doing so increases the work required for an attacker to pinpoint a user's identity, making a security breach less damaging.
 
     % Talk about the architecture of our system
-    \section{System Descrption}
+    \section{System Description}
 
     \subsection{High Level Architecture}
+
+    \begin{center}
+        \begin{figure}[!ht]
+            \includegraphics[scale=.5]{graphics/arch.png}
+            \label{componenets}
+            \caption{A diagram of the components in the system}
+        \end{figure}
+    \end{center}
 
     This system will utilize a peer-to-peer system, with a central server to connect users.
     When a user wants to send a message, it first sends a request to the server for the user's public key and IP (individual clients do not store this to simplify key changing process).
@@ -129,7 +137,7 @@
         \begin{figure}[!ht]
             \includegraphics[scale=.5]{graphics/clientHost.png}
             \label{clientHost}
-            \caption{How a message is sent and a video call is performed}
+            \caption{The flow of one of Client 2's devices sending a message and how a video call is performed}
         \end{figure}
     \end{center}
 
@@ -156,7 +164,7 @@
     For server side storage we will likely use a noSQL database like MongoDB as it will be more performantly scalable because our data will not be relational.
     We have no final decision on the language to implement in. 
     We are currently leaning towards Go for the server and client hosts, application implementations may vary however.
-    Depending on what we choose support, some languages may be optimal for different OS's, this is why gRPC was an intentional choice to maintain compatibility between languages.
+    Depending on what we choose to support, some languages may be optimal for different OS's, this is why gRPC was an intentional choice to maintain compatibility between languages.
 
     \subsection{Stretch Targets}
 
@@ -174,7 +182,7 @@
     Video chatting will likely be the most difficult part of this project.
     While messaging seems like a relatively simple process using gRPC and some off-the-shelf encryption libraries, video streaming seems like more of a challenge.
     Due to some limitations of gRPC, we may need to use a different technology for this, but that will require research beyond this proposal.
-    The actual encryption method for video is relatively trivial with some more time tested libraries, processing, sending, and recieving the video may be more challenging.
+    The actual encryption method for video is relatively trivial with some more time tested libraries for encryption and processing.
 
     \subsection{Architectural Failings}
 
@@ -185,4 +193,12 @@
 
     % Do some timeline for our development
     \section{Implementation Plan}
+    
+    \begin{center}
+        \begin{figure}[!ht]
+            \includegraphics[scale=.35]{graphics/GanttChart.png}
+            \caption{A gantt table for our development timeline}
+        \end{figure}
+    \end{center}
+
 \end{document}
