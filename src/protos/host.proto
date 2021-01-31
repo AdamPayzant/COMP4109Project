@@ -1,0 +1,43 @@
+syntax="proto3";
+
+option go_package="github.com/AdamPayzant/COMP4109Project/tree/master/src/protos/smvsHost";
+
+service clientHost {
+    rpc ReKey(Empty) returns (Status); // Requests client's host to change keys
+    rpc DeleteMessage(DeleteReq) returns (Status);
+    // Messaging calls
+    rpc SendText(Text) returns (Status);
+    rpc RecieveText(ListofMessages) returns (Status);
+
+    rpc GetConversation(Conversation) returns (Empty);
+}
+
+// As the name describes
+message Empty {
+
+}
+
+// A generic status response message
+message Status {
+    int32 status = 1;
+}
+
+message DeleteReq {
+    string user = 1;
+    int64 messageID = 2;
+}
+
+// Because the way protobuffers (don't) do lists, this is the best way to do this
+message ListofMessages {
+    repeated string messages = 1;
+}
+
+message Text {
+    string targetUser = 1;
+    ListofMessages message = 2;
+}
+
+// This will just send the full conversation
+message Conversation {
+    bytes convo = 1;
+}
