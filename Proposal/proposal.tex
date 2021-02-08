@@ -46,14 +46,15 @@
     % High level problem statement, goal, challenges, and what approaches have already been proposed
     \section{Introduction}
 
-    For this project, we will be implementing a secure messaging and video app.
-    The primary objective of this space is to provide a convenient way to send text messages and videos calls (both will be generalized as ``messages'') to others while not having to worry about the contents of the messages being breached.
-    This has historically been a challenge as it's difficult, if not impossible, to guarantee transmission safety in your average modern network, as well as safely storing the messages after receiving them.
-    Many attempts at solving this problem exist such as SMS, Apple's iMessage, WhatsApp, Signal, and many more.
-    The majority of these solutions use some form encryption, passing through a central server, and then finally being sent along to their destination.
-    In contrast, the Skype protocol system to not use a central server.
-    However, we've noted all of these have notable failings or prioritized convenience over security.
-    As a result, we've opted to use peer-to-peer transmission with end-to-end encryption to maximize security.
+    This project is an implementation of a secure text, video and audio messaging app 
+    (all media will be generalized as ``messages''). The primary objective is to provide a secure and 
+    convenient way to send text messages and video calls while not having to worry about message contents being breached. 
+    This has historically been a challenge, as it is difficult to guarantee transmission safety in the average modern network, 
+    as well as storage safety for received messages. Many attempts at solving these problem exist such as SMS, Apple's iMessage, 
+    WhatsApp and Signal. However, the majority of these solutions employ some form of strategy where messages are encrypted, 
+    passed to a central server, and then finally sent to the destination. All of these solutions have notable failings or 
+    prioritized convenience over security. Failings and compromises such as, 3rd parties storing messages and or breaking 
+    end to end encryption. As a result, we've opted to use peer-to-peer transmission with end-to-end encryption to maximize security. 
 
     % Give in-depth explanation of the problem. Talk about the failings of other secure messaging systems
     \section{Background}
