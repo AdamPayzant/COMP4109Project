@@ -47,10 +47,10 @@
     \section{Introduction}
 
       For this project, we will be implementing a secure messaging and video app.
-      The primary objective of this space is to provide a convenient way to send text messages and videos calls (both will be generalized as ``messages'') to others while not having to worry about the contents of the messages being breached.
+      The primary objective of this space is to provide a convenient way to send text messages and video calls (both will be generalized as ``messages'') to others while not having to worry about the contents of the messages being breached.
       This has historically been a challenge as it's difficult, if not impossible, to guarantee transmission safety in your average modern network, as well as safely storing the messages after receiving them.
       Many attempts at solving this problem exist such as SMS, Apple's iMessage, WhatsApp, Signal, and many more.
-      The majority of these solutions use some form encryption, passing through a central server, and then finally being sent along to their destination.
+      The majority of these solutions use some form of encryption, passing through a central server, and then finally being sent along to their destination.
       In contrast, the Skype protocol system to not use a central server.
       However, we've noted all of these have notable failings or prioritized convenience over security.
       As a result, we've opted to use peer-to-peer transmission with end-to-end encryption to maximize security.
@@ -73,11 +73,11 @@
       Based on these failings, our app aims to mitigate them by following these principles:
       \begin{enumerate}
           \item Message Security - A message should be encrypted before sending and can only be decrypted by the recipient upon receiving the message
-          \item Safe Storage - Messages should be stored in safe way and should strive to guarantee complete deletion upon request
+          \item Safe Storage - Messages should be stored in a safe way and should strive to guarantee complete deletion upon request
           \item Anonymity - Users should be anonymous in the eyes of the system. This increases user safety by increasing the work factor to attack an individual
       \end{enumerate}
 
-      Each of these principles are vital for a number of reasons.
+      Each of these principles is vital for several reasons.
       Message security is vital as there is no practical way to guarantee secure transmission over the internet.
       When sending unsecure data, a Man-in-the-Middle Attack, an attack where data in transit is intercepted, read, then send to the intended target, can easily collect user information.
       \footnote{\url{https://www.csoonline.com/article/3340117/what-is-a-man-in-the-middle-attack-how-mitm-attacks-work-and-how-to-prevent-them.html}}
@@ -106,10 +106,10 @@
       \end{center}
 
       This system will utilize a peer-to-peer system, with a central server to connect users.
-      When a user wants to send a message, it first sends a request to the server for the user's public key and IP (individual clients do not store this to simplify key changing process).
-      After recieving this information, the user can then use the key to encrypt the data, either a message or video call, and send it directly to the recipient.
-      A sequence diagram of what a sending a message would be like can be seen in figure \ref{sequence}.
-      From our current research, video calling should effectively be the same, but concurrently be recieving a message as well.
+      When a user wants to send a message, it first sends a request to the server for the user's public key and IP (individual clients do not store this to simplify the key changing process).
+      After receiving this information, the user can then use the key to encrypt the data, either a message or video call, and send it directly to the recipient.
+      A sequence diagram of what sending a message would be like can be seen in figure \ref{sequence}.
+      From our current research, video calling should effectively be the same, but concurrently be receiving a message as well.
       All messages will be securely stored by both the sender and recipient.
 
       \begin{center}
@@ -133,7 +133,7 @@
       When the host receives the message, it will then distribute it to all client devices.
       However, as seen in the diagram, this hierarchy does not occur for video calling.
       The host structure could a decent amount of latency.
-      While this isn't a critical for message sending, it would make video calling sub-optimal, especially if any link in the chain has poor network speeds.
+      While this isn't critical for message sending, it would make video calling sub-optimal, especially if any link in the chain has poor network speeds.
       To avoid this issue, a direct link is established between the two devices video calling.
 
       \begin{center}
@@ -146,10 +146,10 @@
 
       Compared to the client architecture, the central server's architecture is fairly boring.
       This server's primary goal is to manage users.
-      To this end, it handles user registration, tracks user's public key and IP, and serves it to user request.
+      To this end, it handles user registration, tracks users' public key and IP, and serves the data upon user request.
       When a user registers for the system, they will create a username and key pair and provide a host IP.
       The key will be generated client side (will be obscured from the user for quality of life) so that the server can never know the secret private key.
-      User authentication can be handled by just sending an authentication token encrypted with the users public key, and expecting the unencrypted token to be sent with subsequent requests.
+      User authentication can be handled by just sending an authentication token encrypted with the user's public key, and expecting the unencrypted token to be sent with subsequent requests.
       The actions of the server are strictly triggered by user requests and all will access the database.
       The use cases of the server can be seen in figure \ref{serverUse}.
 
@@ -165,8 +165,6 @@
 
       The current tech stack planned for this project is to use gRPC for the transmission of data.
       For server side storage we will likely use a noSQL database like MongoDB as it will be more performantly scalable because our data will not be relational.
-      We have no final decision on the language to implement in.
-      We are currently leaning towards Go for the server and client hosts, application implementations may vary however.
       Depending on what we choose to support, some languages may be optimal for different OS's, this is why gRPC was an intentional choice to maintain compatibility between languages.
 
       \subsection{Stretch Targets}
@@ -174,12 +172,21 @@
       This project seems relatively easy, but without more in-depth research, the apparent ease may be deceptive.
       To add some depth to this project if it turns out to be too simple, while also giving some leeway in case it turns out to be harder than expected, we've added some stretch goals.
       \begin{itemize}
+          \item Simplify the process of shifting central servers, allowing a user to easily change their trust anchor between other users.
           \item Provide client hosting, just make individual docker containers server-side
-          \item For the host, make an additional program with root permissions to read the private key, increasing security of the key
+          \item For the host, make an additional program with root permissions to read the private key, increasing the security of the key
           \item Support more than just Linux
           \item Do some kind of checksum for the messages to guarantee conversation's integrity (not sure how feasible that is)
           \item Include ability to allow/block particular public keys of other users
+          \item Implement alternate structure (see section \ref{AltStruct})
       \end{itemize}
+
+      \subsection{Alternate Structures} \label{AltStruct}
+      
+      The centralized server still poses a risk to the ideal design of our system. 
+      In light of this, we are actively considering removing the central server and replacing it with either a torrent seeding system or a simple blockchain system.
+      This ties into our stretch goal of simplifying the process of changing the central server, where you can shift to this system should you chose.
+      This system may be difficult to practically implement as a user's host IPs may not be static.
 
       \subsection{Potential Challenges}
 
@@ -191,7 +198,7 @@
       \subsection{Architectural Failings}
 
       Unfortunately, this system architecture cannot fully maintain user anonymity.
-      While this system does store a user's IP and a username, the username can be fully anonymous and the IP can still be setup through a proxy so identifying information can be reduced.
+      While this system does store a user's IP and a username, the username can be fully anonymous and the IP can still be set up through a proxy so identifying information can be reduced.
       Because both parties in a conversation should have the records, there's no guarantee if one deletes the message the other also is.
       We believe there has still been adequate risk mitigation, as only those two should be able to access the messages.
 
@@ -202,7 +209,7 @@
 
 	\begin{tabular}{l r l}
 		\textbf{Task Name}	& \textbf{Time allotted} & \textbf{Description}\\
-		gRPC Protocol		& Week 0 - 1 & Develop the implementation of gRPC used for application\\
+		gRPC Protocols		& Week 0 - 1 & Develop the implementation of gRPC used for application\\
 		Server DB  			& Week 0 - 1 & Build the Database that stores Data on Connection Server\\
 		Server Backend 		& Week 0 - 1 & Create a server used to advertise active Clients\\
 		Client Backend 		& Week 1 - 2 & Create the backend for the client application\\
