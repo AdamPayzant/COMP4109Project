@@ -1,6 +1,6 @@
 syntax="proto3";
 
-option go_package="github.com/AdamPayzant/COMP4109Project/tree/master/src/protos/smvsClient";
+option go_package="github.com/AdamPayzant/COMP4109Project/src/protos/smvsClient";
 
 service client {
     rpc recieveMessage(ListofMessages) returns (Status);
