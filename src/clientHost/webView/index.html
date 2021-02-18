@@ -8,6 +8,43 @@
 
         <p>Hello World</p>
 
+        <div id="mainTextArea"></div>
+
+        <div id="mainTextArea"></div>
+        <form action="" >
+            <input id="messageText" type="text" />
+            <input type="button" onclick="send()" />
+        </form>
+
+
+
+        <script src="/javascript/socketIO/socket.io.js" type="application/javascript"></script>
+        <!--<script src="/javascript/clientScript.js" type="application/javascript"></script> -->
+    
+        <script> 
+        
+            const socket = io();
+
+            function send(){
+
+                let message = document.getElementById("messageText").value.toString()
+                document.getElementById("messageText").value = ""
+                //document.getElementById("mainTextArea").innerHTML += message + "<br>"
+                socket.emit("msg", message);
+
+            }
+    
+            socket.on('connect', () => {
+                socket.send('Hello!');
+                //alert("Test");
+            });
+    
+            socket.on('msg', data => {
+                document.getElementById("mainTextArea").innerHTML += data.toString()
+            });
+        
+        </script>
+
 
     </body>
 

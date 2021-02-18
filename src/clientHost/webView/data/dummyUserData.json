@@ -1,0 +1,22 @@
+{
+    "name":"",
+    
+    "clientData": {
+        
+        "publicKey":"",
+        "privateKey":"",
+
+        "SavedContacts":
+        [
+            {"Name":"", "key":""}
+
+        ],
+        "MessageHistory":[
+
+            {"name":"", "key":"", "history":[
+                {"sender":"you", "message":"Hello World"},
+                {"sender":"them", "message":"Who is this?"}
+            ]}
+        ]
+    }
+}
