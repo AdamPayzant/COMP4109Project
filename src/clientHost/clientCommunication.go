@@ -1,5 +1,6 @@
 package main
 
+/*
 //What to do when a user recieves a message
 func receiveMessage(s socketio.Conn, text string) {
 

@@ -1,4 +1,3 @@
-//https://github.com/mattn/go-sqlite3/blob/master/_example/simple/simple.go
 package main
 
 import (
@@ -6,53 +5,46 @@ import (
 	"log"
 	"net/http"
 
-	socketio "github.com/googollee/go-socket.io"
-	//sqlite3 "github.com/mattn/go-sqlite3"
+	"github.com/gorilla/websocket"
 )
 
-//Tried to impliment the example program from the repository used for socket.io go library used
-//Geting an error that indicates that the server (this) is getting packets from the client
-//The connection never starts
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
 
-//Will be looking into an alternative library
-//Example from: https://github.com/googollee/go-socket.io/tree/master/_example
+//var remoteConnection = nil
+
+//Using example for Websocket as start for client application
+//WebSocket used to communicate between the CleintDevice and hostDevice
+//At the moment it will be assumed that One client will run off of one host at a time.
+//
+// Src: https://gowebexamples.com/websockets/
 
 func main() {
 
-	server := socketio.NewServer(nil)
+	http.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
+		conn, _ := upgrader.Upgrade(w, r, nil) // error ignored for sake of simplicity
 
-	//Socket IO work
-	server.OnConnect("/", func(s socketio.Conn) error {
-		s.SetContext("")
-		fmt.Println("connected:", s.ID())
-		return nil
+		for {
+			// Read message from browser
+			msgType, msg, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+
+			// Print the message to the console
+			fmt.Printf("%s sent: %s\n", conn.RemoteAddr(), string(msg))
+
+			// Write message back to browser
+			if err = conn.WriteMessage(msgType, msg); err != nil {
+				return
+			}
+		}
 	})
 
-	server.OnConnect("/", func(s socketio.Conn) error {
-		s.SetContext("")
-		fmt.Println("connected:", s.ID())
-		return nil
-	})
-
-	server.OnEvent("/chat", "msg", func(s socketio.Conn, msg string) string {
-		s.SetContext(msg)
-		return "recv " + msg
-	})
-
-	server.OnError("/", func(s socketio.Conn, e error) {
-		fmt.Println("meet error:", e)
-	})
-
-	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
-		fmt.Println("closed", reason)
-	})
-
-	go server.Serve()
-	//defer server.Close()
-
-	http.Handle("/socket.io/", server)
 	http.Handle("/", http.FileServer(http.Dir("./webView/")))
-	log.Println("Serving at http://localhost:8000")
-	log.Fatal(http.ListenAndServe(":8000", nil))
-
+	//http.ListenAndServeTLS(":3030", "server.crt", "server.key", nil)
+	log.Println("Serving at http://localhost:3030")
+	http.ListenAndServe(":3030", nil)
 }
