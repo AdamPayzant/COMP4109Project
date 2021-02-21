@@ -1,7 +1,7 @@
 syntax="proto3";
 package smvs;
 
-option go_package = "smvsProtos";
+option go_package = "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost";
 
 service clientHost {
     rpc ReKey(Token) returns (Status); // Requests client's host to change keys

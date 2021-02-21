@@ -1,6 +1,8 @@
 syntax="proto3";
 package smvs;
 
+option go_package = "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver";
+
 service Server {
     rpc Register (UserReg) returns (Status);
     rpc getToken (username) returns (authKey);
