@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -18,11 +19,20 @@ import (
 
 var collection *mongo.Collection = nil
 
+const (
+	timeOut = 900000000000 // 15 minutes in nanoseconds
+)
+
+type Token struct {
+	Token    []byte
+	Assigned time.Time
+}
+
 type User struct {
 	Username string
 	Key      rsa.PublicKey
 	IP       string
-	Tokens   []string
+	Tokens   []Token
 }
 
 /*
@@ -62,7 +72,7 @@ func connect() error {
 	Return:
 		error - If there's an error adding the user to the system
 */
-func Register(username string, publickey *rsa.PublicKey, ip string) error {
+func addUser(username string, publickey *rsa.PublicKey, ip string) error {
 	// Does some error checking
 	if collection == nil {
 		return errors.New("Collection Not Defined")
@@ -111,16 +121,21 @@ func addToken(username string) ([]byte, error) {
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, 64)
-	for i := range b {
+	for i := 0; i < len(b); i++ {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	str := string(b)
 
-	var keys = make([]string, len(user.Tokens))
-	for i := range b {
+	var keys = make([]Token, len(user.Tokens))
+	for i := 0; i < len(user.Tokens); i++ {
 		keys[i] = user.Tokens[i]
 	}
-	keys[len(keys)-1] = str
+
+	var newToken Token
+	newToken.Token = []byte(str)
+	newToken.Assigned = time.Now()
+	keys[len(keys)-1] = newToken
+
 	update := bson.M{"$set": bson.M{"Tokens": keys}}
 
 	// Encrypts the token
@@ -150,7 +165,7 @@ func addToken(username string) ([]byte, error) {
 	Output:
 		bool - Whether the token is accepted or not
 */
-func checkToken(username string, token string) (bool, error) {
+func checkToken(username string, token []byte) (bool, error) {
 	if collection == nil {
 		return false, errors.New("Collection Not Defined")
 	}
@@ -163,13 +178,26 @@ func checkToken(username string, token string) (bool, error) {
 		return false, errors.New("User Does Not Exist")
 	}
 
+	found := false
+	clone := make([]Token, len(user.Tokens))
+
 	for _, b := range user.Tokens {
-		if token == b {
-			return true, nil
+		// Also prunes any dead tokens
+		// We may want to pop pruning off to another thread
+		t := time.Now()
+		if t.Sub(b.Assigned) < timeOut {
+			if bytes.Compare(token, b.Token) == 0 {
+				found = true
+			}
+			clone = append(clone, b)
 		}
 	}
 
-	return false, nil
+	// Updates with the pruned token list
+	update := bson.M{"$set": bson.M{"Tokens": clone}}
+	collection.UpdateOne(context.TODO(), filter, update)
+
+	return found, nil
 }
 
 /*

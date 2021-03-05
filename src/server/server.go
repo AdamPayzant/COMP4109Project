@@ -24,13 +24,13 @@ type server struct {
 func (s *server) Register(ctx context.Context, reg *pb_server.UserReg) (*pb_server.Status, error) {
 	key, err := x509.ParsePKCS1PublicKey(reg.GetKey())
 	if err != nil {
-		return nil, err
+		return 2, err
 	}
 	err = addUser(reg.GetUsername(), key, reg.GetIp())
 	if err != nil {
-		return nil, err
+		return 1, err
 	}
-	return nil, nil
+	return 0, nil
 }
 
 func (s *server) getToken(ctx context.Context, req *pb_server.Username) (*pb_server.AuthKey, error) {
