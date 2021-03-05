@@ -2,74 +2,195 @@
 <html>
     <head>
         <title>Hello World</title>
+
+        <style>
+
+            body{
+                height: 100%; 
+                width: 100%; 
+                margin: 0px;
+
+                display: grid;
+
+                position: absolute;
+                grid-template-columns: 80% 20%;
+                grid-template-rows: 90% 10%;
+
+
+            }
+
+            .chatContainer{
+                padding: 1%;
+
+                grid-column: 1;
+                grid-row: 1;
+                
+                background-color: lightgray;
+
+            }
+
+            .textWindow{
+                overflow-y: scroll; 
+                width: 98%; height: 98%;
+
+                vertical-align: bottom; 
+                
+                background-color: whitesmoke;
+            }
+
+            .inputArea{
+                padding: 1%; 
+                
+                grid-column: 1;
+                grid-row: 2; 
+                
+                background-color: lightgreen;
+            }
+        
+            .sidebar{
+                padding: 0px; 
+                
+                grid-column: 2;
+                grid-row: 1 / span 2;
+
+                display: grid;
+                grid-template-columns: max-content;
+                grid-template-rows: auto auto auto auto auto;
+
+                background-color: lightblue;
+            }
+            .standardPadding{
+                padding: 1%;
+            }
+        
+        </style>
+
     </head>
 
     <body>
 
-        <p>Hello World</p>
+        <!-- Test Window -->
+ 
+        <!-- Text Window -->
+        <div class="chatContainer">
+        
+            <pre class="textWindow" id="output">
+     
+            </pre>
+        
+        </div>
 
 
-        <!-- websockets.html -->
-        <input id="input" type="text" />
-        <button onclick="send()">Send</button>
-        <pre id="output"></pre>
+        <!-- Text Input -->
+        <div class="inputArea">
+            <input id="input" type="text" />
+            <button onclick="send()">Send</button>
+        </div>
+        
+        <!-- Side Bar -->
+        <div class="sidebar">
+
+            <!-- Client Login -->
+            <pre style="grid-row: 1; grid-column: 1;" id="clinetSatus" class="standardPadding"></pre>
+
+
+            <!-- Area 1 -->
+            <div style="grid-row: 2; grid-column: 1;" id = "area1" class="standardPadding"> </div>
+            
+            <!-- Area 2 -->
+            <div style="grid-row: 3; grid-column: 1;" id = "area2" class="standardPadding"> </div>
+
+            <!-- Area 3 -->
+            <div style="grid-row: 4; grid-column: 1;" id = "area3" class="standardPadding"> s </div>
+
+            <!-- Web Connection -->
+            <div style="grid-row: 5; grid-column: 1;" id = "area4" class="standardPadding"> </div>
+
+            
+
+        </div>
+        
+
+
         <script>
+
             var input = document.getElementById("input");
             var output = document.getElementById("output");
-            var socket = new WebSocket("ws://localhost:3030/echo");
+            var statusArea = document.getElementById("clinetSatus");
+
+            var socket = new WebSocket("ws" + document.URL.slice(document.URL.indexOf(":")) + "echo");
 
             socket.onopen = function () {
-                output.innerHTML += "Status: Connected\n";
+                setLoginArea(0)
             };
 
+            socket.onclose = function () {
+                setLoginArea(2)
+            }
+
             socket.onmessage = function (e) {
-                output.innerHTML += "Server: " + e.data + "\n";
+
+                let message = {}
+
+                console.log(e.data)
+
+                try {
+                    message = JSON.parse(e.data)
+
+                } catch (err){
+                    console.log(message)
+                    console.log(err)
+
+                }
+
+                if(message.type == "login"){
+
+                    if(message.payload == "1"){
+                        setLoginArea(1)
+                        postToChat("Connected")
+
+                    } else if (message.payload == "2"){
+                        setLoginArea(2)
+                        postToChat("Rejected")
+
+                    }                
+                
+                } else {
+                    postToChat(message.payload)
+
+                }
+
             };
+
+            function postToChat(e){
+                output.innerHTML += "Server: " + e + "\n";
+            }
+
+            function setLoginArea(value){
+
+                if(value == 0){
+                    statusArea.innerHTML = "<input id='loginInput' type='text' /> <button onclick='login()'>login</button>"
+                } else if (value == 1) {
+                    statusArea.innerHTML = "Status: Connected\n";
+                } else if (value == 2) {
+                    statusArea.innerHTML = "Status: Disconnected\n";
+
+                } else {
+                    setLoginArea(0)
+                }
+            }
+
+            function login() {
+                socket.send(document.getElementById("loginInput").value);
+                document.getElementById("loginInput").value = "";
+            }
 
             function send() {
                 socket.send(input.value);
                 input.value = "";
             }
+
         </script>
-
-        <!--
-        <div id="mainTextArea"></div>
-
-        <div id="mainTextArea"></div>
-        <form action="" >
-            <input id="messageText" type="text" />
-            <input type="button" onclick="send()" />
-        </form>
-
-
-
-        <script src="/javascript/socketIO/socket.io.js" type="application/javascript"></script>
-        <script src="/javascript/clientScript.js" type="application/javascript"></script>
-    
-        <script> 
-        
-            const socket = io();
-
-            function send(){
-
-                let message = document.getElementById("messageText").value.toString()
-                document.getElementById("messageText").value = ""
-                //document.getElementById("mainTextArea").innerHTML += message + "<br>"
-                socket.emit("msg", message);
-
-            }
-    
-            socket.on('connect', () => {
-                socket.send('Hello!');
-                //alert("Test");
-            });
-    
-            socket.on('msg', data => {
-                document.getElementById("mainTextArea").innerHTML += data.toString()
-            });
-        
-        </script>
-    -->
 
     </body>
 
