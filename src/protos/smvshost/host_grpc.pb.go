@@ -317,5 +317,5 @@ var ClientHost_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "host.proto",
+	Metadata: "smvshost/host.proto",
 }

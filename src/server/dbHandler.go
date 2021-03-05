@@ -62,7 +62,7 @@ func connect() error {
 	Return:
 		error - If there's an error adding the user to the system
 */
-func addUser(username string, publickey rsa.PublicKey, ip string) error {
+func Register(username string, publickey *rsa.PublicKey, ip string) error {
 	// Does some error checking
 	if collection == nil {
 		return errors.New("Collection Not Defined")
@@ -73,7 +73,7 @@ func addUser(username string, publickey rsa.PublicKey, ip string) error {
 		return errors.New("User Already Exists")
 	}
 
-	user := User{username, publickey, ip, nil}
+	user := User{username, *publickey, ip, nil}
 	insertResults, er := collection.InsertOne(context.TODO(), user)
 	if er != nil {
 		return er

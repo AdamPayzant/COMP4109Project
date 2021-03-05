@@ -97,5 +97,5 @@ var Client_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "client.proto",
+	Metadata: "smvsclient/client.proto",
 }

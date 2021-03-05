@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
+
+	"crypto/x509"
 
 	"google.golang.org/grpc"
 
@@ -19,6 +22,14 @@ type server struct {
 }
 
 func (s *server) Register(ctx context.Context, reg *pb_server.UserReg) (*pb_server.Status, error) {
+	key, err := x509.ParsePKCS1PublicKey(reg.GetKey())
+	if err != nil {
+		return nil, err
+	}
+	err = addUser(reg.GetUsername(), key, reg.GetIp())
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
@@ -43,6 +54,8 @@ func (s *server) getUser(ctx context.Context, req *pb_server.Username) (*pb_serv
 }
 
 func main() {
+	fmt.Println("It's working")
+
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
