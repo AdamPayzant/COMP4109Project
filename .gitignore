@@ -9,3 +9,6 @@
 
 # Node stuff
 node_modules/
+
+# vscode
+.vscode

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net"
 
@@ -76,6 +75,7 @@ func (s *server) updateKey(ctx context.Context, req *pb_server.KeyUpdate) (*pb_s
 	return &pb_server.Status{Status: 0}, nil
 }
 
+// TODO: Implement the DB side function then this
 func (s *server) searchUser(ctx context.Context, req *pb_server.UserQuery) (*pb_server.Status, error) {
 	return nil, nil
 }
@@ -92,8 +92,6 @@ func (s *server) getUser(ctx context.Context, req *pb_server.Username) (*pb_serv
 }
 
 func main() {
-	fmt.Println("It's working")
-
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

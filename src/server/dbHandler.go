@@ -178,26 +178,45 @@ func checkToken(username string, token []byte) (bool, error) {
 		return false, errors.New("User Does Not Exist")
 	}
 
-	found := false
 	clone := make([]Token, len(user.Tokens))
 
-	for _, b := range user.Tokens {
-		// Also prunes any dead tokens
-		// We may want to pop pruning off to another thread
+	var i = 0
+	// This defer bit was an attempt to improve responsiveness
+	// Basically makes it so it can return while still pruning
+	// Also I love/hate the go garbage collecter, but effectively all pointers are smart pointer (data is only deleted when last pointer is out of scope)
+	defer pruneTokens(filter, &user, &i, &clone)
+	for ; i < len(user.Tokens); i++ {
 		t := time.Now()
+		b := user.Tokens[i]
 		if t.Sub(b.Assigned) < timeOut {
 			if bytes.Compare(token, b.Token) == 0 {
-				found = true
+				// Resets the time on the token
+				temp := Token{b.Token, t}
+				clone = append(clone, temp)
+				return true, nil
 			}
 			clone = append(clone, b)
 		}
 	}
+	return false, nil
+}
+
+/*
+A function that continues pruning after parent function
+*/
+func pruneTokens(filter bson.D, user *User, iter *int, clone *[]Token) {
+	i := *iter
+	for i = i + 1; i < len(user.Tokens); i++ {
+		t := time.Now()
+		b := user.Tokens[i]
+		if t.Sub(b.Assigned) < timeOut {
+			*clone = append(*clone, b)
+		}
+	}
 
 	// Updates with the pruned token list
-	update := bson.M{"$set": bson.M{"Tokens": clone}}
+	update := bson.M{"$set": bson.M{"Tokens": *clone}}
 	collection.UpdateOne(context.TODO(), filter, update)
-
-	return found, nil
 }
 
 /*
