@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -18,11 +19,20 @@ import (
 
 var collection *mongo.Collection = nil
 
+const (
+	timeOut = 900000000000 // 15 minutes in nanoseconds
+)
+
+type Token struct {
+	Token    []byte
+	Assigned time.Time
+}
+
 type User struct {
 	Username string
 	Key      rsa.PublicKey
 	IP       string
-	Tokens   []string
+	Tokens   []Token // We may want to store these tokens more securely, them leaking could be pretty damning
 }
 
 /*
@@ -62,7 +72,7 @@ func connect() error {
 	Return:
 		error - If there's an error adding the user to the system
 */
-func addUser(username string, publickey rsa.PublicKey, ip string) error {
+func addUser(username string, publickey *rsa.PublicKey, ip string) error {
 	// Does some error checking
 	if collection == nil {
 		return errors.New("Collection Not Defined")
@@ -73,7 +83,7 @@ func addUser(username string, publickey rsa.PublicKey, ip string) error {
 		return errors.New("User Already Exists")
 	}
 
-	user := User{username, publickey, ip, nil}
+	user := User{username, *publickey, ip, nil}
 	insertResults, er := collection.InsertOne(context.TODO(), user)
 	if er != nil {
 		return er
@@ -111,16 +121,21 @@ func addToken(username string) ([]byte, error) {
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, 64)
-	for i := range b {
+	for i := 0; i < len(b); i++ {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	str := string(b)
 
-	var keys = make([]string, len(user.Tokens))
-	for i := range b {
+	var keys = make([]Token, len(user.Tokens))
+	for i := 0; i < len(user.Tokens); i++ {
 		keys[i] = user.Tokens[i]
 	}
-	keys[len(keys)-1] = str
+
+	var newToken Token
+	newToken.Token = []byte(str)
+	newToken.Assigned = time.Now()
+	keys[len(keys)-1] = newToken
+
 	update := bson.M{"$set": bson.M{"Tokens": keys}}
 
 	// Encrypts the token
@@ -150,7 +165,7 @@ func addToken(username string) ([]byte, error) {
 	Output:
 		bool - Whether the token is accepted or not
 */
-func checkToken(username string, token string) (bool, error) {
+func checkToken(username string, token []byte) (bool, error) {
 	if collection == nil {
 		return false, errors.New("Collection Not Defined")
 	}
@@ -163,13 +178,45 @@ func checkToken(username string, token string) (bool, error) {
 		return false, errors.New("User Does Not Exist")
 	}
 
-	for _, b := range user.Tokens {
-		if token == b {
-			return true, nil
+	clone := make([]Token, len(user.Tokens))
+
+	var i = 0
+	// This defer bit was an attempt to improve responsiveness
+	// Basically makes it so it can return while still pruning
+	// Also I love/hate the go garbage collecter, but effectively all pointers are smart pointer (data is only deleted when last pointer is out of scope)
+	defer pruneTokens(filter, &user, &i, &clone)
+	for ; i < len(user.Tokens); i++ {
+		t := time.Now()
+		b := user.Tokens[i]
+		if t.Sub(b.Assigned) < timeOut {
+			if bytes.Compare(token, b.Token) == 0 {
+				// Resets the time on the token
+				temp := Token{b.Token, t}
+				clone = append(clone, temp)
+				return true, nil
+			}
+			clone = append(clone, b)
+		}
+	}
+	return false, nil
+}
+
+/*
+A function that continues pruning after parent function
+*/
+func pruneTokens(filter bson.D, user *User, iter *int, clone *[]Token) {
+	i := *iter
+	for i = i + 1; i < len(user.Tokens); i++ {
+		t := time.Now()
+		b := user.Tokens[i]
+		if t.Sub(b.Assigned) < timeOut {
+			*clone = append(*clone, b)
 		}
 	}
 
-	return false, nil
+	// Updates with the pruned token list
+	update := bson.M{"$set": bson.M{"Tokens": *clone}}
+	collection.UpdateOne(context.TODO(), filter, update)
 }
 
 /*
@@ -209,7 +256,7 @@ func updateIP(username string, ip string) error {
 	Output:
 		error - Reports if an error occured
 */
-func updateKey(username string, publicKey rsa.PublicKey) error {
+func updateKey(username string, publicKey *rsa.PublicKey) error {
 	if collection == nil {
 		return errors.New("Collection Not Defined")
 	}
@@ -226,6 +273,11 @@ func updateKey(username string, publicKey rsa.PublicKey) error {
 	collection.UpdateOne(context.TODO(), filter, update)
 
 	return nil
+}
+
+// TODO: Write this
+func searchUser(partialname string) ([]string, error) {
+	return nil, nil
 }
 
 /*
