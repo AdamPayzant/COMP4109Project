@@ -3,6 +3,8 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -67,7 +69,32 @@ func passwordChecker(text string) bool {
 //
 func clienetJSONParser(inputText string) (string, string, string) {
 
-	return "error", "null", "null"
+	type asdklsadllsdakl struct {
+		A string `json:"functionClass"`
+		B string `json:"functionName"`
+		C string `json:"payload"`
+	}
+
+	var sdassd asdklsadllsdakl
+
+	if !json.Valid([]byte(inputText)) {
+		return "Error", "Error", "Warning"
+	}
+
+	err := json.Unmarshal([]byte(inputText), &sdassd)
+
+	if err != nil {
+		print(err)
+	}
+
+	if &sdassd == nil {
+
+		return "A", "A", "s"
+	}
+
+	fmt.Println(sdassd.A)
+
+	return sdassd.A, sdassd.B, sdassd.C
 
 }
 

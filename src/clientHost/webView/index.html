@@ -156,6 +156,7 @@
                     }                
                 
                 } else {
+
                     postToChat(message.payload)
 
                 }
@@ -163,7 +164,7 @@
             };
 
             function postToChat(e){
-                output.innerHTML += "Server: " + e + "\n";
+                output.innerHTML += "Server: " + e.toString() + "\n";
             }
 
             function setLoginArea(value){
@@ -181,13 +182,19 @@
             }
 
             function login() {
-                socket.send(document.getElementById("loginInput").value);
+
+                let message = {"functionClass":"login", "functionName":"loginAttempt", "payload":document.getElementById("loginInput").value}
+
+                socket.send(JSON.stringify(message));
                 document.getElementById("loginInput").value = "";
             }
 
             function send() {
-                socket.send(input.value);
+
+                let message = {"functionClass":"chat", "functionName":"echo", "payload":input.value}
+                socket.send(JSON.stringify(message));
                 input.value = "";
+
             }
 
         </script>

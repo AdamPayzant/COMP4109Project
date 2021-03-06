@@ -29,48 +29,64 @@ func websocketRequestHander(w http.ResponseWriter, r *http.Request) {
 	var attemps = 0
 	for {
 
-		var status = loginRouterFunction(conn)
-
-		fmt.Printf("Attempt %d %d\n", status, attemps)
-
-		if status == 1 {
-			//Set on close handler
-			setConnectionHandlers(conn)
-			conn.WriteMessage(1, []byte(clientJSONCreator("login", "1")))
-			break
+		// Read message from browser
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			return
 		}
 
-		attemps++
-		conn.WriteMessage(1, []byte(clientJSONCreator("echo", fmt.Sprintf("Failed attempt: %d", attemps))))
-		fmt.Printf("Failed Attempt %d\n", attemps)
+		fmt.Printf("%s\n", string(msg))
 
-		//Five failed attempts Special status
-		if attemps >= MAX_ATTEMPTS { //|| (connection != nil) {
-			conn.WriteMessage(1, []byte(clientJSONCreator("login", "2")))
-			conn.Close()
-			return
+		functionClass, functionName, payload := clienetJSONParser(string(msg))
+
+		fmt.Printf("%s :: %s :: %s\n", functionClass, functionName, payload)
+
+		if functionClass == "login" {
+
+			var status = authenticationFunction(payload)
+
+			fmt.Printf("Attempt %d %d\n", status, attemps)
+
+			if status == 1 {
+				//Set on close handler
+				setConnectionHandlers(conn)
+				conn.WriteMessage(1, []byte(clientJSONCreator("login", "1")))
+				break
+			}
+
+			attemps++
+			conn.WriteMessage(1, []byte(clientJSONCreator("echo", fmt.Sprintf("Failed attempt: %d", attemps))))
+			fmt.Printf("Failed Attempt %d\n", attemps)
+
+			//Five failed attempts Special status
+			if attemps >= MAX_ATTEMPTS { //|| (connection != nil) {
+				conn.WriteMessage(1, []byte(clientJSONCreator("login", "2")))
+				conn.Close()
+				return
+			}
+
 		}
 
 	}
 
 	for {
-		clientMessageRouterFunction(conn)
+
+		if -1 == clientMessageRouterFunction(conn) {
+			break
+		}
+
 	}
 
 }
 
-func loginRouterFunction(conn *websocket.Conn) int {
+func authenticationFunction(password string) int {
 
 	// Read message from browser
-	_, msg, err := conn.ReadMessage()
-	if err != nil {
-		return -1
-	}
 
 	// Print the message to the console
-	fmt.Printf("%s sent: %s\n", conn.RemoteAddr(), string(msg))
+	fmt.Printf("Password sent: %s\n", string(password))
 
-	if passwordChecker(string(msg)) {
+	if passwordChecker(string(password)) {
 
 		return 1
 
@@ -88,15 +104,17 @@ func clientMessageRouterFunction(conn *websocket.Conn) int {
 		return -1
 	}
 
+	_, _, payload := clienetJSONParser(string(msg))
+
 	fmt.Printf("%s sent: %s\n", conn.RemoteAddr(), string(msg))
 
-	if string(msg) == "end" {
+	if payload == "end" {
 		conn.Close()
 		return -1
 	}
 
 	// Write message back to browser
-	if err = conn.WriteMessage(msgType, []byte(clientJSONCreator("echo", fmt.Sprintf("%s", msg)))); err != nil {
+	if err = conn.WriteMessage(msgType, []byte(clientJSONCreator("echo", payload))); err != nil {
 		return 1
 	}
 
