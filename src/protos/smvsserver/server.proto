@@ -1,7 +1,7 @@
 syntax="proto3";
 package smvs;
 
-option go_package = "github.com/AdamPayzant/COMP4109Project/src/protos/server/smvsserver";
+option go_package = "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver";
 
 service Server {
     rpc Register (UserReg) returns (Status);
@@ -27,27 +27,27 @@ message username {
 
 // Sends an encrypted auth key
 message authKey {
-    string authKey = 1;
+    bytes authKey = 1;
 }
 
 // User registration message
 message UserReg {
     string username = 1;
-    string key = 2;
+    bytes key = 2;
     string ip = 3;
 }
 
 // User IP update
 message IPupdate {
     string username = 1;
-    string authKey = 2;
+    bytes authKey = 2;
     string newIP = 3;
 }
 
 message KeyUpdate {
     string username = 1;
-    string authKey = 2;
-    string newKey = 3;
+    bytes authKey = 2;
+    bytes newKey = 3;
 }
 
 message UserQuery {
@@ -59,6 +59,6 @@ message UserList {
 }
 
 message UserInfo {
-    string publicKey = 1;
+    bytes publicKey = 1;
     string IP = 2;
 }
