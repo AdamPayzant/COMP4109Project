@@ -32,7 +32,7 @@ type User struct {
 	Username string
 	Key      rsa.PublicKey
 	IP       string
-	Tokens   []Token
+	Tokens   []Token // We may want to store these tokens more securely, them leaking could be pretty damning
 }
 
 /*
@@ -237,7 +237,7 @@ func updateIP(username string, ip string) error {
 	Output:
 		error - Reports if an error occured
 */
-func updateKey(username string, publicKey rsa.PublicKey) error {
+func updateKey(username string, publicKey *rsa.PublicKey) error {
 	if collection == nil {
 		return errors.New("Collection Not Defined")
 	}
@@ -254,6 +254,11 @@ func updateKey(username string, publicKey rsa.PublicKey) error {
 	collection.UpdateOne(context.TODO(), filter, update)
 
 	return nil
+}
+
+// TODO: Write this
+func searchUser(partialname string) ([]string, error) {
+	return nil, nil
 }
 
 /*

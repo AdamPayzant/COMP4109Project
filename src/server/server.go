@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -24,25 +25,55 @@ type server struct {
 func (s *server) Register(ctx context.Context, reg *pb_server.UserReg) (*pb_server.Status, error) {
 	key, err := x509.ParsePKCS1PublicKey(reg.GetKey())
 	if err != nil {
-		return 2, err
+		return &pb_server.Status{Status: 2}, err
 	}
 	err = addUser(reg.GetUsername(), key, reg.GetIp())
 	if err != nil {
-		return 1, err
+		return &pb_server.Status{Status: 1}, err
 	}
-	return 0, nil
+	return &pb_server.Status{Status: 0}, nil
 }
 
 func (s *server) getToken(ctx context.Context, req *pb_server.Username) (*pb_server.AuthKey, error) {
-	return nil, nil
+	token, err := addToken(req.Username)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb_server.AuthKey{AuthKey: token}, nil
 }
 
 func (s *server) UpdateIP(ctx context.Context, req *pb_server.IPupdate) (*pb_server.Status, error) {
-	return nil, nil
+	validated, err := checkToken(req.Username, req.AuthKey)
+	if !validated || err != nil {
+		return &pb_server.Status{Status: 1}, err
+	}
+
+	err = updateIP(req.Username, req.NewIP)
+	if err != nil {
+		return &pb_server.Status{Status: 2}, err
+	}
+
+	return &pb_server.Status{Status: 0}, nil
 }
 
 func (s *server) updateKey(ctx context.Context, req *pb_server.KeyUpdate) (*pb_server.Status, error) {
-	return nil, nil
+	validated, err := checkToken(req.Username, req.AuthKey)
+	if !validated || err != nil {
+		return &pb_server.Status{Status: 1}, err
+	}
+
+	key, err := x509.ParsePKCS1PublicKey(req.GetNewKey())
+	if err != nil {
+		return &pb_server.Status{Status: 3}, errors.New("Non key passed as key")
+	}
+	err = updateKey(req.Username, key)
+	if err != nil {
+		return &pb_server.Status{Status: 2}, err
+	}
+
+	return &pb_server.Status{Status: 0}, nil
 }
 
 func (s *server) searchUser(ctx context.Context, req *pb_server.UserQuery) (*pb_server.Status, error) {
@@ -50,7 +81,14 @@ func (s *server) searchUser(ctx context.Context, req *pb_server.UserQuery) (*pb_
 }
 
 func (s *server) getUser(ctx context.Context, req *pb_server.Username) (*pb_server.UserInfo, error) {
-	return nil, nil
+	ip, key, err := getUser(req.Username)
+	if err != nil {
+		return nil, err
+	}
+	return &pb_server.UserInfo{
+		PublicKey: x509.MarshalPKCS1PublicKey(&key),
+		IP:        ip,
+	}, nil
 }
 
 func main() {
