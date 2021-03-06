@@ -92,11 +92,16 @@ func (s *server) getUser(ctx context.Context, req *pb_server.Username) (*pb_serv
 }
 
 func main() {
+	creds, err := crendentials.NewServerTLSFromFile("service.pem", "service.key")
+	if err != nil {
+		log.Fatalf("Failed to setup TLS: %v", err)
+	}
+
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
+	s := grpc.NewServer(grpc.Creds(creds))
 	pb_server.RegisterServerServer(s, &server{})
 
 	err = connect()

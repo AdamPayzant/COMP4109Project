@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"log"
@@ -79,9 +80,12 @@ func (h *host) GetConversation(ctx context.Context, req *pb_host.Username) (*pb_
 }
 
 func main() {
-	// This bit connects the host to the server
-	// TODO: This should be made to use a secure TLS connection
-	conn, err := grpc.Dial(serverAddress, grpc.WithInsecure(), grpc.WithBlock())
+	// Connects to the central server
+	// Current uses self-signed TLS for this, but I'd rather not go through a CA unless this is actually deployed
+	config := &tls.Config{
+		InsecureSkipVerify: false,
+	}
+	conn, err := grpc.Dial(serverAddress, grpc.WithTransportCredentials(crendentials.NewTLS(config)))
 	if err != nil {
 		log.Fatalf("Did not connect: %v", err)
 	}
