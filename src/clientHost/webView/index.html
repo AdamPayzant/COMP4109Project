@@ -73,10 +73,7 @@
  
         <!-- Text Window -->
         <div class="chatContainer">
-        
-            <pre class="textWindow" id="output">
-     
-            </pre>
+            <pre class="textWindow" id="output"></pre>
         
         </div>
 
@@ -164,7 +161,7 @@
             };
 
             function postToChat(e){
-                output.innerHTML += "Server: " + e.toString() + "\n";
+                output.innerHTML += "Server: " + e + "\n";
             }
 
             function setLoginArea(value){

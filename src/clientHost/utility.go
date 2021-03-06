@@ -1,12 +1,16 @@
 package main
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"regexp"
 	"strings"
+	//"code.google.com/p/go.crypto/scrypt"
 )
 
 //Utility functions
@@ -16,11 +20,12 @@ import (
 //So far tries to break tags
 func cleanText(text string) string {
 
-	strings.ReplaceAll(text, "<", "&lt;")
-	strings.ReplaceAll(text, ">", "&gt;")
+	var tempText string
+	tempText = strings.ReplaceAll(text, "<", "&lt;")
+	tempText = strings.ReplaceAll(tempText, ">", "&gt;")
 
+	//return tempText
 	return text
-
 }
 
 // Function to Convert a string into a sha256 hash
@@ -29,7 +34,7 @@ func cleanText(text string) string {
 //
 func standardHashFunction(text string) string {
 
-	return string(base64.StdEncoding.EncodeToString(sha256.New().Sum([]byte(text))))
+	return base64.StdEncoding.EncodeToString(sha256.New().Sum([]byte(text)))
 
 }
 
@@ -50,10 +55,67 @@ func validHashCheck(text string) bool {
 
 var debugPassword string = "12345678"
 
+func createPassword(password string) string {
+	return standardHashFunction(password)
+}
+
+func createPasswordSalt(password string) (string, string) {
+
+	noise := make([]byte, 2)
+	_, err := io.ReadFull(rand.Reader, noise)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pepper := string(noise)
+	//pepper := string(hex.EncodeToString(noise))
+	//pepper := base64.StdEncoding.EncodeToString(noise)
+
+	var hash = standardHashFunction(pepper + password)
+	return hash, pepper
+
+}
+
 func passwordChecker(text string) bool {
 
+	//Old Function should not be needed
 	if standardHashFunction(text) == standardHashFunction(debugPassword) {
 		return true
+	}
+
+	return false
+
+}
+
+//Keep Here
+var testPassword, passwordSalt = createPasswordSalt(debugPassword)
+
+func passwordCheckerWithSalt(password string, salt string) bool {
+
+	if standardHashFunction(salt+password) == testPassword {
+		fmt.Print("It works")
+		return true
+	}
+	return false
+}
+
+func passwordCheckerWithPepper(text string) bool {
+
+	for i := 0; i < 256; i++ {
+		for j := 0; j < 256; j++ {
+
+			//To generate All Salts
+			b := make([]byte, 2)
+			b[0] = byte(i)
+			b[1] = byte(j)
+			tempPepper := string(b)
+
+			//Check if Valid
+			if passwordCheckerWithSalt(text, tempPepper) {
+				fmt.Print("It works")
+				return true
+			}
+		}
 	}
 
 	return false
@@ -100,6 +162,6 @@ func clienetJSONParser(inputText string) (string, string, string) {
 
 func clientJSONCreator(functionType string, payload string) string {
 
-	return "{\"type\":\"" + functionType + "\",\"payload\":\"" + payload + "\"}"
+	return "{\"type\":\"" + functionType + "\",\"payload\":\"" + strings.ReplaceAll(payload, "\"", "\\\"") + "\"}"
 
 }

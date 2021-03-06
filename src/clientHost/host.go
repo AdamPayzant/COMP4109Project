@@ -18,7 +18,9 @@ import (
 
 func main() {
 
+	//Websockets
 	http.HandleFunc("/echo", websocketRequestHander)
+
 	/*
 		go func() {
 
@@ -33,8 +35,11 @@ func main() {
 			}
 		}()
 	*/
+
+	//Load Assets to Browser
 	http.Handle("/", http.FileServer(http.Dir("./webView/")))
 	//http.ListenAndServeTLS(":3030", "server.crt", "server.key", nil)
+
 	log.Println("Serving at http://localhost:3030")
 	http.ListenAndServe(":3030", nil)
 }
