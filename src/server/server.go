@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	pb_server "smvsserver"
 )
@@ -92,7 +93,7 @@ func (s *server) getUser(ctx context.Context, req *pb_server.Username) (*pb_serv
 }
 
 func main() {
-	creds, err := crendentials.NewServerTLSFromFile("service.pem", "service.key")
+	creds, err := credentials.NewServerTLSFromFile("service.pem", "service.key")
 	if err != nil {
 		log.Fatalf("Failed to setup TLS: %v", err)
 	}

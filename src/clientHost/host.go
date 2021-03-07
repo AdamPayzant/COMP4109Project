@@ -81,7 +81,7 @@ func (h *host) GetConversation(ctx context.Context, req *pb_host.Username) (*pb_
 
 func main() {
 	// Connects to the central server
-	// Current uses self-signed TLS for this, but I'd rather not go through a CA unless this is actually deployed
+	// Current uses self-signed TLS for this, I'd rather not go through a CA unless this is actually deployed
 	config := &tls.Config{
 		InsecureSkipVerify: false,
 	}

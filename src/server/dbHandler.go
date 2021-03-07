@@ -181,10 +181,6 @@ func checkToken(username string, token []byte) (bool, error) {
 	clone := make([]Token, len(user.Tokens))
 
 	var i = 0
-	// This defer bit was an attempt to improve responsiveness
-	// Basically makes it so it can return while still pruning
-	// Also I love/hate the go garbage collecter, but effectively all pointers are smart pointer (data is only deleted when last pointer is out of scope)
-	defer pruneTokens(filter, &user, &i, &clone)
 	for ; i < len(user.Tokens); i++ {
 		t := time.Now()
 		b := user.Tokens[i]
@@ -193,11 +189,13 @@ func checkToken(username string, token []byte) (bool, error) {
 				// Resets the time on the token
 				temp := Token{b.Token, t}
 				clone = append(clone, temp)
+				go pruneTokens(filter, &user, &i, &clone)
 				return true, nil
 			}
 			clone = append(clone, b)
 		}
 	}
+	go pruneTokens(filter, &user, &i, &clone)
 	return false, nil
 }
 
