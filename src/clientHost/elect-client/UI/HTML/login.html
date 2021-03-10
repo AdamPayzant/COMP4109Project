@@ -1,0 +1,33 @@
+<!DOCTYPE HTML>
+<html> 
+
+<head>
+
+    <title> Welcome </title>
+
+
+</head>
+
+<body>
+
+    <div style="display:inline-grid; grid-gap: 2%; grid-template-columns: 125px 50px 50px; grid-template-rows: auto auto auto; height: 80%; position:relative; top: 20%">
+        <input id="addr" placeholder="network address" type="text" value="${connectionData.network}" style="font-size: small;grid-column: 1; grid-row: 1;"/>
+        <input id="port" placeholder="port" type="text" value="${connectionData.port}" style="grid-column: 2; grid-row: 1;"/>
+        <input id="user" placeholder="username" type="text" value="${connectionData.username}" style="grid-column: 1 / 3; grid-row: 2;"/>
+        <input id="pswd" placeholder="password" type="password" value="" style="grid-column: 1 / 3; grid-row: 3;"/>
+        <button onclick='login()' style=" font-size: small; grid-column: 3; grid-row: 1 / 4;">login</button>
+    </div>
+
+    <script>
+
+        function login(){
+
+
+
+            alert('Hello World')
+        }
+
+    </script>
+
+</body>
+</html>  

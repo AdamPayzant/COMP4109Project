@@ -1,5 +1,7 @@
 const { app, BrowserWindow } = require('electron')
 
+let UIView = null 
+
 function createWindow () {
   	const win = new BrowserWindow({
     	width: 1280,
@@ -14,8 +16,10 @@ function createWindow () {
 	}   
 
 })
-    win.setMenu(null)
-   win.loadFile('./UI/display.html')
+    //win.setMenu(null)
+   win.loadFile('./UI/HTML/display.html')
+
+   UIView = win;
 }
 
 app.whenReady().then(createWindow)
@@ -34,19 +38,28 @@ app.on('activate', () => {
 
 //For inter-application communication
 let fileName = null;
-const {dialog, ipcMain} = require('electron');
+const {dialog, ipcMain, webContents} = require('electron');
+const {sanatizeText} = require('./modules/textSantization.js');
 const fs = require('fs')
 
 ipcMain.on('chatSent', (event, chatText)=>{
     console.log("Client Sent: " + JSON.parse(chatText).payload)
-    event.reply('inBoundChat', chatText)
-
+    //event.reply('inBoundChat', JSON.parse(chatText).payload)
+    UIView.webContents.send('inBoundChat', sanatizeText(JSON.parse(chatText).payload))
 })
 
 ipcMain.on('loginAttempt',(event, loginText)=>{
     console.log("Login Sent: " + JSON.parse(loginText).payload)
-    event.returnValue = (JSON.parse(loginText).payload == "12345678") 
+
+
+    UIView.webContents.send('loginStatus', (JSON.parse(JSON.parse(loginText).payload).password == "12345678"))
+
+
+    
+    //event.returnValue = (JSON.parse(JSON.parse(loginText).payload).password == "12345678") 
 
 })
+
+
 
 
