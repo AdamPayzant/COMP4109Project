@@ -1,0 +1,12 @@
+{
+  "name": "electron-chat-client",
+  "version": "0.0.1",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^12.0.0"
+  }
+}
