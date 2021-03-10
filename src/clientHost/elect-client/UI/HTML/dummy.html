@@ -1,0 +1,8 @@
+
+<div style="display:grid; grid-template-columns: 40% 30% 30%; grid-template-rows: auto auto auto; max-height: 100%; max-width: 100%;">
+    <input placeholder="network address" type="text" value="${connectionData.network}" style="grid-column: 1; grid-row: 1;"/>
+    <input placeholder="port" type="text" value="${connectionData.port}" style="grid-column: 2; grid-row: 1;"/>
+    <input placeholder="username" type="text" value="${connectionData.username}" style="grid-column: 1 / 2; grid-row: 2;"/>
+    <input placeholder="password" type="password" value="" style="grid-column: 1 / 2; grid-row: 3;"/>
+    <button onclick='login()' style="grid-column: 3; grid-row: 1 / 3;">login</button>
+</div>
