@@ -12,7 +12,7 @@ service clientHost {
     rpc ConfirmConvo(InitMessage) returns (Status);
     // Messaging calls
     rpc SendText(ClientText) returns (Status);
-    rpc RecieveText(H2HText) returns (Status);
+    rpc ReceiveText(H2HText) returns (Status);
 
     rpc GetConversation(Username) returns (Conversation);
 }
