@@ -1,0 +1,58 @@
+
+body{
+    height: 100%; 
+    width: 100%; 
+    margin: 0px;
+
+    display: grid;
+
+    position: absolute;
+    grid-template-columns: auto 250px;
+    grid-template-rows: 90% 10%;
+
+
+}
+
+.chatContainer{
+    padding: 1%;
+
+    grid-column: 1;
+    grid-row: 1;
+    
+    background-color: lightgray;
+
+}
+
+.textWindow{
+    overflow-y: scroll; 
+    width: 98%; height: 98%;
+
+    vertical-align: bottom; 
+    
+    background-color: whitesmoke;
+}
+
+.inputArea{
+    padding: 1%; 
+    
+    grid-column: 1;
+    grid-row: 2; 
+    
+    background-color: lightgreen;
+}
+        
+.sidebar{
+    padding: 0px; 
+    
+    grid-column: 2;
+    grid-row: 1 / span 2;
+
+    display: grid;
+    grid-template-columns: max-content;
+    grid-template-rows: auto auto auto auto auto;
+
+    background-color: lightblue;
+}
+.standardPadding{
+    padding: 1%;
+}
