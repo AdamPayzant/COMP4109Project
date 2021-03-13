@@ -70,7 +70,7 @@ func (h *host) SendText(ctx context.Context, req *pb_host.ClientText) (*pb_host.
 	return nil, nil
 }
 
-func (h *host) RecieveText(ctx context.Context, req *pb_host.H2HText) (*pb_host.Status, error) {
+func (h *host) ReceiveText(ctx context.Context, req *pb_host.H2HText) (*pb_host.Status, error) {
 	return nil, nil
 }
 
