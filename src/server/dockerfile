@@ -4,7 +4,11 @@ WORKDIR /go/src/smvs/server
 
 COPY . .
 
-RUN go get -d -v ./...
-RUN go install -v ./...
+RUN apk add openssl
+# Builds the actual server
+# Also removes APK to improve security
+RUN make cleanServer
 
-CMD [server]
+EXPOSE 8080
+
+CMD ["/go/src/smvs/server/server"]

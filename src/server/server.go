@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 
@@ -93,7 +94,8 @@ func (s *server) getUser(ctx context.Context, req *pb_server.Username) (*pb_serv
 }
 
 func main() {
-	creds, err := credentials.NewServerTLSFromFile("service.pem", "service.key")
+	fmt.Println("Starting server")
+	creds, err := credentials.NewServerTLSFromFile("certs/server-cert.pem", "certs/server-key.pem")
 	if err != nil {
 		log.Fatalf("Failed to setup TLS: %v", err)
 	}
