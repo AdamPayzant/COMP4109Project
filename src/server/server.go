@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	pb_server "smvsserver"
+	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
 )
 
 const (

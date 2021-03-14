@@ -1,0 +1,10 @@
+FROM smvs/base:latest
+
+WORKDIR /go/src/smvs/server
+
+COPY . .
+
+RUN go get -d -v ./...
+RUN go install -v ./...
+
+CMD [server]
