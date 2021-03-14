@@ -16,6 +16,9 @@ node_modules/
 # vscode
 .vscode
 
+# Excludes built files
+src/server/server
+
 # Excludes any TLS stuff
 # This should be generated upon service creation
 service.pem
