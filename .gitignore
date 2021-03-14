@@ -7,6 +7,9 @@
 *.synctex.gz
 *.out
 
+#go
+pkg/
+
 # Node stuff
 node_modules/
 
