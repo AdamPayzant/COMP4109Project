@@ -1,35 +1,34 @@
 
 body{
+    box-sizing: border-box;
     height: 100%; 
-    width: 100%; 
+    width: 100%;
+    max-width: 100%;
+    min-width: 100%;
     margin: 0px;
 
     display: grid;
 
     position: absolute;
     grid-template-columns: auto 250px;
-    grid-template-rows: 90% 10%;
+    grid-template-rows: 80% 20%;
+
+    background-color: lightslategray;
 
 
 }
 
 .chatContainer{
-    padding: 1%;
+    box-sizing: border-box;
+    margin: 30px;
 
     grid-column: 1;
     grid-row: 1;
     
-    background-color: lightgray;
+    background-color: snow;
 
-}
-
-.textWindow{
-    overflow-y: scroll; 
-    width: 98%; height: 98%;
-
-    vertical-align: bottom; 
-    
-    background-color: whitesmoke;
+    overflow-y: scroll;
+    padding: 30px;
 }
 
 .inputArea{
@@ -43,7 +42,7 @@ body{
         
 .sidebar{
     padding: 0px; 
-    
+    box-sizing: border-box;
     grid-column: 2;
     grid-row: 1 / span 2;
 
@@ -56,3 +55,114 @@ body{
 .standardPadding{
     padding: 1%;
 }
+
+/*##################################*\
+  Chat bubble internal 
+\*##################################*/
+
+.chatBubbleInner{
+    position: relative;
+    height: 100%;
+    min-height: 30px;
+    padding: 5px;
+    min-width: 100px;
+    max-width: 50%;
+    box-sizing: border-box;
+}
+
+.chatBubbleUser {
+    grid-column: 2;
+
+}
+
+.chatBubbleClient {
+    grid-column: 1;
+
+}
+
+.chatBubbleOuter{
+    width: 100%;
+    min-height: 30px;
+    padding-top: 2px;
+    display: grid;
+    grid-template-columns: 50% 50%;
+    box-sizing: border-box;
+}
+
+
+/*##################################*\
+  Chat bubbles Colors
+\*##################################*/
+
+.chatBubble0{ 
+    background-color: lightgray;
+}
+.chatBubble1{ 
+    background-color: deepskyblue;
+}
+.chatBubble2{ 
+    background-color: limegreen;
+}
+.chatBubble3{ 
+    background-color: plum;
+}
+.chatBubble4{ 
+    background-color: tomato;
+}
+.chatBubble5{ 
+    background-color: orange;
+}
+.chatBubble6{ 
+    background-color: khaki;
+}
+.chatBubble7{ 
+    background-color: springgreen;
+}
+.chatBubble8{ 
+    background-color: lightskyblue;
+}
+.chatBubble9{ 
+    background-color: mediumorchid;
+}
+.chatBubble10{ 
+    background-color: violet;
+}
+.chatBubble11{ 
+    background-color: gold;
+}
+.chatBubble12{ 
+    background-color: silver;
+}
+
+/*##################################*\
+  Chat bubbles Colors
+\*##################################*/
+
+.context-menu { 
+    position: absolute; 
+    text-align: center; 
+    background: lightgray; 
+    border: 1px solid black; 
+} 
+
+.context-menu ul { 
+    padding: 0px; 
+    margin: 0px; 
+    min-width: 150px; 
+    list-style: none; 
+} 
+
+.context-menu ul li { 
+    padding-bottom: 7px; 
+    padding-top: 7px; 
+    border: 1px solid black; 
+} 
+
+.context-menu ul li a { 
+    text-decoration: none; 
+    color: black; 
+} 
+
+.context-menu ul li:hover { 
+    background: darkgray; 
+} 
