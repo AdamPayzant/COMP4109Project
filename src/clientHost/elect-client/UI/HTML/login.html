@@ -20,7 +20,7 @@
     <script>
         const { ipcRenderer } = require("electron")
         var statusArea = document.getElementById("clientSatus");
-        let connectionData = ipcRenderer.sendSync('fetch','pastLogin')
+        let connectionData = ipcRenderer.sendSync('fetch','connectionData')
 
         setLoginArea(0);
         function setLoginArea(value, message){
