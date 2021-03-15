@@ -1,14 +1,16 @@
+
+/*##################################*\
+  Basic Electron Startup
+\*##################################*/
+
 const { app, BrowserWindow } = require('electron')
 
 let UIView = null 
 
 function createWindow () {
   const win = new BrowserWindow({
-  	//width: 1280,
-  	//height: 720,
     minWidth: 1280,
     minHeight: 720,
-      //resizable: false,
     webPreferences: {
       nodeIntegration: true,
           devTools: true,
@@ -19,7 +21,7 @@ function createWindow () {
   UIView = win;
 
   //win.setMenu(null)
-  changeView('login')
+  changeView('chat')
   
 }
 
@@ -40,22 +42,35 @@ app.on('activate', () => {
 //For inter-application communication
 let fileName = null;
 const {dialog, ipcMain, webContents} = require('electron');
-const {sanatizeText} = require('./modules/textSantization.js');
+const {sanatizeText} = require('./modules/utilityFunctions.js');
+
+const {chatHistory} = require('./modules/chatHistoryClass.js')
+
 const fs = require('fs')
 
 /*##################################*\
+  Internal data
 \*##################################*/
 
 let connectionData = {"network": "127.0.0.1", "port": "9090", "username": "user"}
+let chat = new chatHistory(117013);
 
 /*##################################*\
+  Client Responce Event Listeners
 \*##################################*/
 
 
 ipcMain.on('chatSent', (event, chatText)=>{
     console.log("Client Sent: " + JSON.parse(chatText).payload)
     //event.reply('inBoundChat', JSON.parse(chatText).payload)
-    UIView.webContents.send('inBoundChat', sanatizeText(JSON.parse(chatText).payload))
+
+    let msgData = {speaker:-1, order:chatHistory.newID, messageText:sanatizeText(JSON.parse(chatText).payload)}
+    chat.addMSG(msgData)
+    UIView.webContents.send('inBoundChat', msgData)
+})
+
+ipcMain.on('deleteMSG', (event, msgID)=>{
+  chat.removeMSG(msgID)
 })
 
 ipcMain.on('loginAttempt',(event, loginText)=>{
@@ -68,7 +83,6 @@ ipcMain.on('loginAttempt',(event, loginText)=>{
     connectionData.port =     attemptData.port ||  connectionData.port
     connectionData.username = attemptData.username ||  connectionData.username
 
-
     let loginAttempt = (attemptData.password == "12345678")
 
     if (loginAttempt){  
@@ -79,7 +93,6 @@ ipcMain.on('loginAttempt',(event, loginText)=>{
     UIView.webContents.send('loginStatus', loginAttempt)
 
     //event.returnValue = (JSON.parse(JSON.parse(loginText).payload).password == "12345678") 
-
 })
 
 ipcMain.on('moveTo', (event, destination)=>{
@@ -96,9 +109,8 @@ ipcMain.on('fetch', (event, obj)=>{
 
 
 /*##################################*\
+  Inter Application processes
 \*##################################*/
-
-/* Inter Application processes */
 
 //Function to change what view is loaded
 function changeView(destination){
@@ -110,7 +122,11 @@ function changeView(destination){
       break
 
     case 'chat':
-      UIView.loadFile('./UI/HTML/display.html');
+      UIView.loadFile('./UI/HTML/chat.html');
+      break
+
+    case 'menu':
+      UIView.loadFile('./UI/HTML/mainMenu.html');
       break
 
     default:
@@ -124,8 +140,12 @@ function fetchData(requestOBJ){
 
   switch(requestOBJ){
 
-    case 'pastLogin':
+    case 'connectionData':
       return connectionData
+
+    case 'activeChat':
+      //console.log(JSON.stringify(chat))
+      return chat
 
     case 'connection':
       return 2
@@ -135,30 +155,28 @@ function fetchData(requestOBJ){
 }
 
 /*##################################*\
-Copy of the Functions Found in host.go
+  Copy of the Functions Found in host.go
 \*##################################*/
 
-
+function SendText() {
+	return null, null
+}
 function DeleteMessage() {
-	return nil, nil
+	return null, null
+}
+function RecieveText() {
+	return null, null
 }
 
+
 function InitializeConvo() {
-	return nil, nil
+	return null, null
 }
 
 function ConfirmConvo() {
-	return nil, nil
-}
-
-function SendText() {
-	return nil, nil
-}
-
-function RecieveText() {
-	return nil, nil
+	return null, null
 }
 
 function GetConversation() {
-	return nil, nil
+	return null, null
 }
