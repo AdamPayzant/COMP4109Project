@@ -1,11 +1,24 @@
+/*##################################*\
+  Required Libraries
+\*##################################*/
+const {ipcMain, app, BrowserWindow } = require('electron');
+const {sanatizeText, passwordCheckDebug} = require('./modules/utilityFunctions.js');
+const {chatHistory} = require('./modules/chatHistoryClass.js')
+const fs = require('fs');
+
+
+/*##################################*\
+  Internal data
+\*##################################*/
+
+let UIView = null 
+let connectionData = {"network": "127.0.0.1", "port": "9090", "username": "user"}
+let chat = new chatHistory(101013731);
+
 
 /*##################################*\
   Basic Electron Startup
 \*##################################*/
-
-const { app, BrowserWindow } = require('electron')
-
-let UIView = null 
 
 function createWindow () {
   const win = new BrowserWindow({
@@ -13,16 +26,13 @@ function createWindow () {
     minHeight: 720,
     webPreferences: {
       nodeIntegration: true,
-          devTools: true,
-          contextIsolation: false
-  }   
+      devTools: true,
+      contextIsolation: false
+    }   
   })
-
   UIView = win;
-
   //win.setMenu(null)
   changeView('chat')
-  
 }
 
 app.whenReady().then(createWindow)
@@ -39,77 +49,52 @@ app.on('activate', () => {
   }
 })
 
-//For inter-application communication
-let fileName = null;
-const {dialog, ipcMain, webContents} = require('electron');
-const {sanatizeText} = require('./modules/utilityFunctions.js');
-
-const {chatHistory} = require('./modules/chatHistoryClass.js')
-
-const fs = require('fs')
-
-/*##################################*\
-  Internal data
-\*##################################*/
-
-let connectionData = {"network": "127.0.0.1", "port": "9090", "username": "user"}
-let chat = new chatHistory(117013);
 
 /*##################################*\
   Client Responce Event Listeners
 \*##################################*/
 
-
 ipcMain.on('chatSent', (event, chatText)=>{
-    console.log("Client Sent: " + JSON.parse(chatText).payload)
-    //event.reply('inBoundChat', JSON.parse(chatText).payload)
-
-    let msgData = {speaker:-1, order:chatHistory.newID, messageText:sanatizeText(JSON.parse(chatText).payload)}
-    chat.addMSG(msgData)
-    UIView.webContents.send('inBoundChat', msgData)
+    SendText(chatText)
 })
 
 ipcMain.on('deleteMSG', (event, msgID)=>{
-  chat.removeMSG(msgID)
+  DeleteMessage(msgID)
 })
 
-ipcMain.on('loginAttempt',(event, loginText)=>{
+ipcMain.on('loginAttempt',(event, loginData)=>{
 
-    console.log("Login Sent: " + JSON.parse(loginText).payload)
-    let attemptData = JSON.parse(JSON.parse(loginText).payload)
+  let loginStatus = connectToHost(loginData)
 
-    //Update local connection data
-    connectionData.network =  attemptData.network || connectionData.network
-    connectionData.port =     attemptData.port ||  connectionData.port
-    connectionData.username = attemptData.username ||  connectionData.username
-
-    let loginAttempt = (attemptData.password == "12345678")
-
-    if (loginAttempt){  
+  switch(loginStatus){
+    case 0:
       changeView('chat')
-      return
-    }
+      break;
 
-    UIView.webContents.send('loginStatus', loginAttempt)
-
-    //event.returnValue = (JSON.parse(JSON.parse(loginText).payload).password == "12345678") 
-})
-
-ipcMain.on('moveTo', (event, destination)=>{
-
-  changeView(destination)
-
-})
-
-ipcMain.on('fetch', (event, obj)=>{
-
-  event.returnValue = fetchData(obj)
+    case 1:
+      UIView.webContents.send('loginStatus', false)
+      break;
+      
+  }
 
 })
 
 
 /*##################################*\
-  Inter Application processes
+  Internal Functions
+\*##################################*/
+
+ipcMain.on('moveTo', (event, destination)=>{
+  changeView(destination)
+})
+
+ipcMain.on('fetch', (event, obj)=>{
+  event.returnValue = fetchData(obj)
+})
+
+
+/*##################################*\
+  Router Functions for the Application
 \*##################################*/
 
 //Function to change what view is loaded
@@ -131,10 +116,7 @@ function changeView(destination){
 
     default:
       changeView('login')
-
-  }
-
-}
+}}
 
 function fetchData(requestOBJ){
 
@@ -144,39 +126,79 @@ function fetchData(requestOBJ){
       return connectionData
 
     case 'activeChat':
-      //console.log(JSON.stringify(chat))
       return chat
 
     case 'connection':
       return 2
+}}
 
-  }
-
-}
 
 /*##################################*\
   Copy of the Functions Found in host.go
 \*##################################*/
 
-function SendText() {
-	return null, null
+/* Events for Send Texts */
+function SendText(chatText) {
+
+    console.log("Client Sent: " + JSON.parse(chatText).payload)
+    
+    if(chat != null){
+      let msgData = chat.addMSGuser(sanatizeText(JSON.parse(chatText).payload), null)
+      UIView.webContents.send('inBoundChat', msgData)
+    }
+
 }
-function DeleteMessage() {
-	return null, null
+function DeleteMessage(msgID) {
+
+  if(chat != null)
+	  chat.removeMSG(msgID)
+
 }
 function RecieveText() {
 	return null, null
 }
 
-
+/* Events for Conversations*/
 function InitializeConvo() {
 	return null, null
 }
-
 function ConfirmConvo() {
 	return null, null
 }
-
 function GetConversation() {
 	return null, null
+}
+
+/* Host connection events */
+function connectToHost(loginText){
+  
+  let attemptData = JSON.parse(JSON.parse(loginText).payload)
+  //console.log("Login Sent: " + JSON.stringify(attemptData))
+  
+  //Update local connection data
+  connectionData.network =  attemptData.network || connectionData.network
+  connectionData.port =     attemptData.port ||  connectionData.port
+  connectionData.username = attemptData.username ||  connectionData.username
+
+  //This is for debugging purposes (Switch to actual login proceedure)
+  if (passwordCheckDebug(attemptData.password)){
+    return 0
+  }
+
+  return 1
+
+  /**
+   * Two stages of this process (impliment latter):
+   * 
+   *  1. Make sure that the client can connect
+   * 
+   *  2. Attempt provide credentials
+   * 
+   *  Inform the User of the success of these two steps
+   * 
+   */
+
+}
+function dissconnectFromHost(){
+
 }

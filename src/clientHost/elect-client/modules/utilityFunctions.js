@@ -18,3 +18,14 @@ exports.sanatizeText = (input)=>{
     return output;
 
 }
+// Debug Function for password validation 
+//
+// Returns true or false based on if the password is valid
+//
+exports.passwordCheckDebug = (password)=>{
+
+    let debugPassword = "12345678"
+    
+    return password == debugPassword
+
+}
