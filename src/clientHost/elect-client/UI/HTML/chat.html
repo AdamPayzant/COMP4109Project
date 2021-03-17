@@ -45,6 +45,7 @@
 
 
         <div id="contextMenu" class="context-menu" style="display: none"> </div> 
+        <input id="clipboard" type="text" action="none" style="display: none"> </input> 
 
         <script>
 
@@ -55,53 +56,6 @@
 
             let connectionData = {"network": "", "port": "", "username": ""};
             let chatHistory = null
-
-
-            class chatHistory2{
-
-            constructor(id){
-                this.messages = [ //{order:0, speaker:0, messageText:"", metadata:{}}  [
-                    {order:0, speaker:-1, messageText:"Hello", metadata:{}}, 
-                    {order:1, speaker:0, messageText:"Bonjour", metadata:{}},
-                    {order:2, speaker:-1, messageText:"...", metadata:{}}
-                ]
-                this.newID = this.messages.length || 0
-                this.id = id || 0
-                this.users = [] //{id:0, publickey:"", name:""}
-                
-            }
-
-            getID() {
-            return this.id
-            }
-
-            getUserNames() {
-            return this.participants
-            }
-
-            getUserName(num) {
-            for (x of this.users){
-                if(x.id == num)
-                return x.name
-            }
-            return ""
-            }
-
-            addMSG(msg){
-            this.messages.push(msg)
-            this.newID++
-            }
-
-            getmsgList(){return this.messages}
-
-            removeMSG(id){
-            let list = this.messages
-            //list = []
-            this.messages = list.filter((e)=>{return e.order != id})
-            }
-
-            }
-
             
             setLoginArea(0);
 
@@ -129,7 +83,8 @@
                 }
 
                 return `<div onmouseover="setUpContextMenu(${msgID})" id="chatMessage${msgID}" class="chatBubbleOuter">
-                        <div title="1" class="${msgType} chatBubble${""+msgColor} chatBubbleInner"> 
+                        <div class="colormarkerOuter"> <div class="chatBubble${""+msgColor} colormarkerInner">  </div></div>
+                        <div title="1" class="${msgType} chatBubbleInner"> 
                             ${chatMSG}
                         </div>
                         </div`
@@ -139,9 +94,11 @@
 
                 document.getElementById('contextMenu').innerHTML = `<ul> 
                         <li onclick="deleteMsg(${msgID})" ><a href="#">Delete</a></li> 
+                        <li onclick="copyText(${msgID})" ><a href="#">Copy Text</a></li> 
+                        <li onclick="copyMessage(${msgID})" ><a href="#">Copy Message (JSON)</a></li> 
                     </ul>`
-
                 document.getElementById(`chatMessage${msgID}`).oncontextmenu = msgContextMenu;
+
             }
 
             function setLoginArea(value, message){    
@@ -195,13 +152,25 @@
             }
 
             function deleteMsg(msgID){
-                document.getElementById(`chatMessage${msgID}`).remove()
 
                 if(confirm("Are you sure that you want to delete this message?")){
+                    document.getElementById(`chatMessage${msgID}`).remove()
                     ipcRenderer.send('deleteMSG', msgID)
+                    chatHistory.messages = chatHistory.messages.filter((e)=>{return e.order != msgID})
                 }
 
             }
+
+            const { clipboard } = require('electron')
+
+            function copyText(msgID){
+                clipboard.writeText(chatHistory.messages.filter((e)=>{return e.order == msgID})[0].messageText)
+            }
+
+            function copyMessage(msgID){
+                clipboard.writeText(JSON.stringify(chatHistory.messages.filter((e)=>{return e.order == msgID})[0]))
+            }
+
 
             function loginAttempt(message){
                 ipcRenderer.send('loginAttempt', message);
@@ -210,7 +179,7 @@
 
             ipcRenderer.on('inBoundChat', (event, messageText)=>{
                 postToChat(messageText)
-                chatHistory.messages.push()
+                chatHistory.messages.push(messageText)
             })
 
             ipcRenderer.on('loginStatus', (event, result)=>{
@@ -224,19 +193,9 @@
 
             function start(){
 
+                chatHistory = ipcRenderer.sendSync('fetch', 'activeChat')
 
-
-
-                let tempchatHistory = ipcRenderer.sendSync('fetch', 'activeChat')
-
-
-                chatHistory = new chatHistory2(tempchatHistory.id)
-                chatHistory.messages = tempchatHistory.messages
-                chatHistory.newID = tempchatHistory.newID
-                chatHistory.users = tempchatHistory.users
-
-
-                for (x of chatHistory.getmsgList())
+                for (x of chatHistory.messages)
                     postToChat(x)
 
             }
