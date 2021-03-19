@@ -4,6 +4,9 @@
 const {ipcMain, app, BrowserWindow } = require('electron');
 const {sanatizeText, passwordCheckDebug} = require('./modules/utilityFunctions.js');
 const {chatHistory} = require('./modules/chatHistoryClass.js')
+const {clientCommunication} = require('./modules/clientCommuniction.js');
+const {networkInformation} = require('./modules/networkInformation.js');
+
 const fs = require('fs');
 
 
@@ -12,7 +15,9 @@ const fs = require('fs');
 \*##################################*/
 
 let UIView = null 
-let connectionData = {"network": "127.0.0.1", "port": "9090", "username": "user"}
+let connectionData = new networkInformation("127.0.0.1", "9090", "user")
+let outbound = new clientCommunication();
+outbound.establishConnection(connectionData)
 let chat = new chatHistory(101013731);
 
 
