@@ -1,0 +1,11 @@
+/*##################################*\
+  Utility
+\*##################################*/
+
+.centeredText{
+
+    margin: auto auto auto auto; 
+    height: max-content; 
+    width: max-content;
+
+}

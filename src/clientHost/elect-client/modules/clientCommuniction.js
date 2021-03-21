@@ -1,6 +1,7 @@
 const grpcLibrary = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 
+//A resource for latter: https://www.grpc.io/docs/languages/node/basics/
 exports.clientCommunication =  class clientCommunication{
 
 
