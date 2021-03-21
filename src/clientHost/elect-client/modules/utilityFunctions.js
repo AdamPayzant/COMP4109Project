@@ -4,7 +4,7 @@
 //
 exports.sanatizeText = (input)=>{
 
-    let output = input.toString();
+    let output = input;
 
     if(!output){
         return ""

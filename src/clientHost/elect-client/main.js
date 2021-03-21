@@ -29,6 +29,8 @@ function createWindow () {
   const win = new BrowserWindow({
     minWidth: 1280,
     minHeight: 720,
+    width: 1280,
+    height: 720,
     webPreferences: {
       nodeIntegration: true,
       devTools: true,
@@ -60,7 +62,7 @@ app.on('activate', () => {
 \*##################################*/
 
 ipcMain.on('chatSent', (event, chatText)=>{
-    SendText(chatText)
+    SendText(JSON.parse(chatText))
 })
 
 ipcMain.on('deleteMSG', (event, msgID)=>{
@@ -145,10 +147,10 @@ function fetchData(requestOBJ){
 /* Events for Send Texts */
 function SendText(chatText) {
 
-    console.log("Client Sent: " + JSON.parse(chatText).payload)
+    console.log("Client Sent: " + chatText.payload)
     
     if(chat != null){
-      let msgData = chat.addMSGuser(sanatizeText(JSON.parse(chatText).payload), null)
+      let msgData = chat.addMSGuser(sanatizeText(chatText.payload), null)
       UIView.webContents.send('inBoundChat', msgData)
     }
 
@@ -159,8 +161,14 @@ function DeleteMessage(msgID) {
 	  chat.removeMSG(msgID)
 
 }
-function RecieveText() {
-	return null, null
+function RecieveText(text, idenitfier) {
+
+  console.log("Other Sent: " + chatText.payload)
+
+  if(chat != null){
+    let msgData = chat.addMSGOther(idenitfier, sanatizeText(text), null)
+    UIView.webContents.send('inBoundChat', msgData)
+  }
 }
 
 /* Events for Conversations*/
