@@ -88,7 +88,7 @@ func (s *server) GetUser(ctx context.Context, req *pb_server.Username) (*pb_serv
 		return nil, err
 	}
 	return &pb_server.UserInfo{
-		PublicKey: x509.MarshalPKCS1PublicKey(&key),
+		PublicKey: key,
 		IP:        ip,
 	}, nil
 }

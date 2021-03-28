@@ -36,7 +36,7 @@ func testServer() bool {
 	var res = false
 	res = testRegister(server, key)
 	if !res {
-		fmt.Print("Failed to register user")
+		fmt.Println("Failed to register user")
 		return false
 	}
 	res, token := testGetToken(server)
@@ -48,18 +48,18 @@ func testServer() bool {
 	tok, _ := rsa.DecryptOAEP(hash, rand.Reader, key, token, nil)
 	res = testUpdateIP(server, tok)
 	if !res {
-		fmt.Print("Failed to update IP")
+		fmt.Println("Failed to update IP")
 		return false
 	}
 	newKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	res = testUpdateKey(server, tok, newKey)
 	if !res {
-		fmt.Print("Failed to update key")
+		fmt.Println("Failed to update key")
 		return false
 	}
 	res = testGetUser(server, newKey)
 	if !res {
-		fmt.Print("Failed to get user")
+		fmt.Println("Failed to get user")
 		return false
 	}
 	return true
@@ -75,7 +75,7 @@ func testRegister(server pb_server.ServerClient, key *rsa.PrivateKey) bool {
 	}
 	r, err := server.Register(ctx, &req)
 	if err != nil {
-		fmt.Print(err)
+		fmt.Println(err)
 		return false
 	}
 	if r.Status != 0 {
@@ -91,7 +91,7 @@ func testGetToken(server pb_server.ServerClient) (bool, []byte) {
 	}
 	r, err := server.GetToken(ctx, &req)
 	if err != nil {
-		fmt.Print(err)
+		fmt.Println(err)
 		return false, nil
 	}
 	return true, r.AuthKey
@@ -106,7 +106,7 @@ func testUpdateIP(server pb_server.ServerClient, token []byte) bool {
 	}
 	r, err := server.UpdateIP(ctx, &req)
 	if err != nil {
-		fmt.Print(err)
+		fmt.Println(err)
 		return false
 	}
 	if r.Status != 0 {
@@ -124,7 +124,7 @@ func testUpdateKey(server pb_server.ServerClient, token []byte, newKey *rsa.Priv
 	}
 	r, err := server.UpdateKey(ctx, &req)
 	if err != nil {
-		fmt.Print(err)
+		fmt.Println(err)
 		return false
 	}
 	if r.Status != 0 {
@@ -140,15 +140,15 @@ func testGetUser(server pb_server.ServerClient, key *rsa.PrivateKey) bool {
 	}
 	r, err := server.GetUser(ctx, &req)
 	if err != nil {
-		fmt.Print(err)
+		fmt.Println(err)
 		return false
 	}
 	if r.IP != "1.1.1.1:1112" {
-		fmt.Print("Incorrect IP")
+		fmt.Println("Incorrect IP")
 		return false
 	}
 	if !bytes.Equal(r.PublicKey, x509.MarshalPKCS1PublicKey(&key.PublicKey)) {
-		fmt.Print("Incorrect key")
+		fmt.Println("Incorrect key")
 		return false
 	}
 	return true
@@ -158,6 +158,6 @@ func main() {
 	fmt.Println("Testing server:")
 	res := testServer()
 	if res {
-		fmt.Print("Server has passed test")
+		fmt.Println("Server has passed test")
 	}
 }
