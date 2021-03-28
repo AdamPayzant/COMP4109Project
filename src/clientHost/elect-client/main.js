@@ -15,6 +15,22 @@ let userData = {key:"12345678", name:"Bob"}
 let hostConnectionData = new networkInformation("127.0.0.1", "9090", "user")
 let otherUser = {key:"12345678", name:"Alice", IP:"",status:""}
 
+let addressBook = [
+  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
+  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
+  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
+  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
+  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
+  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
+  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
+  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
+  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
+  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
+  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
+  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"}
+]
+
+
 
 let UIView = null
 let outbound = new clientCommunication();
@@ -112,6 +128,29 @@ ipcMain.on('fetch', (event, obj)=>{
 
 ipcMain.on('renderFrament', (event, fragmentName)=>{
   event.returnValue = fragmentRouter(fragmentName)
+})
+
+ipcMain.on('provideContactList', (event, searchValue, searchType)=>{
+
+  let innerHTML = ""
+
+  let contacts = []
+
+  if(searchType == 0){
+    contacts = addressBook.filter((value)=>{return value.name.indexOf(searchValue) != -1})
+  } else {
+    contacts = addressBook.filter((value)=>{return value.publicKey.indexOf(searchValue.lowercase()) == 0})
+  }
+
+  for (c of contacts){
+
+    let tempValue = {name:c.name, indentifier:c.indentifier, publicKey:c.publicKey, IP:c.IP, status:"Online"}
+    innerHTML += fragmentStreamlined('contactListing.html', tempValue)
+
+  }
+
+  event.returnValue = innerHTML
+
 })
 
 
