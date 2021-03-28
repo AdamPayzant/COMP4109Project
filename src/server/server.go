@@ -35,7 +35,7 @@ func (s *server) Register(ctx context.Context, reg *pb_server.UserReg) (*pb_serv
 	return &pb_server.Status{Status: 0}, nil
 }
 
-func (s *server) getToken(ctx context.Context, req *pb_server.Username) (*pb_server.AuthKey, error) {
+func (s *server) GetToken(ctx context.Context, req *pb_server.Username) (*pb_server.AuthKey, error) {
 	token, err := addToken(req.Username)
 
 	if err != nil {
@@ -59,7 +59,7 @@ func (s *server) UpdateIP(ctx context.Context, req *pb_server.IPupdate) (*pb_ser
 	return &pb_server.Status{Status: 0}, nil
 }
 
-func (s *server) updateKey(ctx context.Context, req *pb_server.KeyUpdate) (*pb_server.Status, error) {
+func (s *server) UpdateKey(ctx context.Context, req *pb_server.KeyUpdate) (*pb_server.Status, error) {
 	validated, err := checkToken(req.Username, req.AuthKey)
 	if !validated || err != nil {
 		return &pb_server.Status{Status: 1}, err
@@ -78,11 +78,11 @@ func (s *server) updateKey(ctx context.Context, req *pb_server.KeyUpdate) (*pb_s
 }
 
 // TODO: Implement the DB side function then this
-func (s *server) searchUser(ctx context.Context, req *pb_server.UserQuery) (*pb_server.Status, error) {
+func (s *server) SearchUser(ctx context.Context, req *pb_server.UserQuery) (*pb_server.UserList, error) {
 	return nil, nil
 }
 
-func (s *server) getUser(ctx context.Context, req *pb_server.Username) (*pb_server.UserInfo, error) {
+func (s *server) GetUser(ctx context.Context, req *pb_server.Username) (*pb_server.UserInfo, error) {
 	ip, key, err := getUser(req.Username)
 	if err != nil {
 		return nil, err

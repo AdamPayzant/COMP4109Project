@@ -75,7 +75,7 @@ func connect() error {
 func addUser(username string, publickey *rsa.PublicKey, ip string) error {
 	// Does some error checking
 	if collection == nil {
-		return errors.New("Collection Not Defined")
+		return errors.New("collection not defined")
 	}
 	filter := bson.D{{Key: "username", Value: username}}
 	err := collection.FindOne(context.TODO(), filter)
@@ -106,7 +106,7 @@ func addUser(username string, publickey *rsa.PublicKey, ip string) error {
 */
 func addToken(username string) ([]byte, error) {
 	if collection == nil {
-		return nil, errors.New("Collection Not Defined")
+		return nil, errors.New("collection not defined")
 	}
 
 	// Gets the user
@@ -167,7 +167,7 @@ func addToken(username string) ([]byte, error) {
 */
 func checkToken(username string, token []byte) (bool, error) {
 	if collection == nil {
-		return false, errors.New("Collection Not Defined")
+		return false, errors.New("collection not defined")
 	}
 
 	// Gets the user
@@ -185,7 +185,7 @@ func checkToken(username string, token []byte) (bool, error) {
 		t := time.Now()
 		b := user.Tokens[i]
 		if t.Sub(b.Assigned) < timeOut {
-			if bytes.Compare(token, b.Token) == 0 {
+			if bytes.Equal(token, b.Token) {
 				// Resets the time on the token
 				temp := Token{b.Token, t}
 				clone = append(clone, temp)
@@ -228,7 +228,7 @@ func pruneTokens(filter bson.D, user *User, iter *int, clone *[]Token) {
 */
 func updateIP(username string, ip string) error {
 	if collection == nil {
-		return errors.New("Collection Not Defined")
+		return errors.New("collection not defined")
 	}
 
 	// Gets the user
@@ -256,7 +256,7 @@ func updateIP(username string, ip string) error {
 */
 func updateKey(username string, publicKey *rsa.PublicKey) error {
 	if collection == nil {
-		return errors.New("Collection Not Defined")
+		return errors.New("collection not defined")
 	}
 
 	// Gets the user
@@ -290,7 +290,7 @@ func searchUser(partialname string) ([]string, error) {
 */
 func getUser(username string) (ip string, key rsa.PublicKey, err error) {
 	if collection == nil {
-		return "", key, errors.New("Collection Not Defined")
+		return "", key, errors.New("collection not defined")
 	}
 
 	// Gets the user
