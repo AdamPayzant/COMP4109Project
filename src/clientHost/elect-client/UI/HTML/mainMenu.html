@@ -8,10 +8,26 @@
 
     </head>
 
-    <body>
+    <body style="overflow: hidden;">
 
         <!-- Select a client that the user wants to chat with -->
-        <div style="grid-column: 1 / 4; grid-row: 1; background-color: skyblue;" class="containerItem"> </div>
+        <div style="overflow: hidden; grid-column: 1 / 4; grid-row: 1; background-color: skyblue;" class="containerItem"> 
+        <div style="overflow: hidden; margin: 10px; grid-gap: 5px; display: grid; grid-template-columns: 40% 15% calc(100% - 75% - 20px) 10% 10%; grid-template-rows: auto 50px;">
+        <!-- Contacts -->
+        <div class="contactSelectionArea" id="contactSelectionArea">
+        </div>
+        
+        <!-- Search Bar -->
+        <input type="text" placeholder="Search Bar" id="contactSearch" style="grid-column: 1; grid-row: 2;" value="" oninput="populateContactList()"> </input>
+        <select name="searchoptions" id="searchoptions" style="grid-column: 2; grid-row: 2;">
+            <option value="name"> Name </option>
+            <option value="public key"> Public Key </option>
+        </select>
+
+        <button type="button" style="grid-column: 4; grid-row: 2;"> One Time Connection </button>
+        <button type="button" style="grid-column: 5; grid-row: 2;"> New Contact </button>
+        
+        </div></div>
 
 
         <!-- Display Connection information -->
@@ -64,5 +80,32 @@
         <!-- Settings Menu?-->
         <div style="grid-column: 3; grid-row: 3;" class="containerItem"> </div>
         
+
+        <script> 
+        
+
+        const { ipcRenderer } = require("electron")
+        
+        function populateContactList(){
+
+            //Default value for "Name"
+            let searchType = 0
+
+            if(document.getElementById('searchoptions').value == 'public key')
+                searchType = 1
+
+            let searchValue =  document.getElementById('contactSearch').value
+            document.getElementById('contactSelectionArea').innerHTML = ipcRenderer.sendSync('provideContactList', searchValue, searchType)
+        }
+
+        function start(){
+            populateContactList()
+        }
+        
+        
+        start()
+        
+        </script>
+
     </body>
 </html>

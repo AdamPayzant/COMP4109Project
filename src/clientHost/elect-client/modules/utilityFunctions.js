@@ -44,17 +44,14 @@ function fragmentCompletionFunction(filepath, data){
     try {
         text = fs.readFileSync(filepath).toString()
     } catch (error) {
-        console.log(0)
+        console.log(error)
         return ""
     }
-    console.log(4)
-
-    //return "x"
 
     for (element of Object.keys(data)){
 
         text = text.replaceAll('${'+element+'}', data[element]);
-        console.log(test[element])
+        //console.log(test[element])
 
     }
 
