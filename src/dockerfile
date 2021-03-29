@@ -1,7 +1,7 @@
-##############################
-# Base docker image for SMVS #
-# DO NOT RUN DIRECTLY        #
-##############################
+#################################
+# Base docker image for SMVS    #
+# won't do much if run directly #
+#################################
 
 # Uses the go alpine image because it's small
 FROM golang:1.16-alpine
@@ -12,7 +12,7 @@ ENV PATH /usr/local/go/bin:$PATH
 WORKDIR /go/src/smvs
 COPY . .
 
-RUN apk add build-base bash
+RUN apk add make
 # Installs the smvs protos module
 WORKDIR /go/src/smvs/protos
 RUN go install github.com/AdamPayzant/COMP4109Project/src/protos/...
