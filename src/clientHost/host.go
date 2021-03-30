@@ -11,8 +11,8 @@ import (
 	"net"
 	"time"
 
-	pb_host "smvshost"
-	pb_server "smvsserver"
+	pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
+	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
 
 	"google.golang.org/grpc"
 )
@@ -29,7 +29,23 @@ type host struct {
 	pb_host.UnimplementedClientHostServer
 }
 
+/*
+	Message pipe line
+		Text
+			Sending: plain text -> RSA -> TLS/SSL (gRPC)
+			Receving: TLS/SSL (gRPC) -> RSA -> plain text
+		Video
+			Sending: stream -> TLS/SSL (gRPC)
+			Receving: TLS/SSL (gRPC) -> steam
+*/
+
 func (h *host) ReKey(ctx context.Context, req *pb_host.Token) (*pb_host.Status, error) {
+	/*
+		This function is used to update the public key for the RSA encryption.
+		The public key can only be changed if the correct auth key is provided to the main server
+		The private key should only exist on TRUSTED end user clients.
+	*/
+
 	/*
 		This is currently just in a state to demo gRPC call
 		Plenty of stuff still to do
