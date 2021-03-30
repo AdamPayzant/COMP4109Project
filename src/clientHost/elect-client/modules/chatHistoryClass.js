@@ -1,15 +1,11 @@
 exports.chatHistory = class chatHistory{
 
-  constructor(id, lastID, users, messages){
+  constructor(id, users, messages, lastID){
     
-    this.messages = messages || [ //{order:0, speaker:0, messageText:"", metadata:{}}  [
-      {order:0, speaker:-1, messageText:"Hello", metadata:{}}, 
-      {order:1, speaker:0, messageText:"Bonjour", metadata:{}},
-      {order:2, speaker:-1, messageText:"...", metadata:{}}
-    ]
+    this.messages = messages || [] //{order:0, speaker:0, messageText:"", metadata:{}}  [
     this.newID = lastID || this.messages.length || 0
     this.id = id || parseInt(Math.floor( Math.random() * Math.pow(2,42)))
-    this.users = users || [] //{id:0, publickey:"", name:""}
+    this.users = users || [] //{speakerID:0, identifier:0}
     
   }
 
