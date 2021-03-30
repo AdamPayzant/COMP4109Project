@@ -11,31 +11,13 @@ const {networkInformation} = require('./modules/networkInformation.js');
 /*##################################*\
   Internal data
 \*##################################*/
-let userData = {key:"12345678", name:"Bob"}
-let hostConnectionData = new networkInformation("127.0.0.1", "9090", "user")
-let otherUser = {key:"12345678", name:"Alice", IP:"",status:""}
-
-let addressBook = [
-  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
-  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
-  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
-  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
-  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
-  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
-  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
-  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
-  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
-  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
-  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"},
-  {name:"Alice", indentifier:"101013731", publicKey:"b6eeae78488755fe12bf9ea1028882fd", IP: "127.0.0.1"}
-]
-
-
-
+let userData = null
+let hostConnectionData = null
+let otherUser = null
+let addressBook = null
 let UIView = null
-let outbound = new clientCommunication();
-let chat = new chatHistory(101013731);
-outbound.establishConnection(hostConnectionData)
+let outbound = null
+let chat = null
 
 /*##################################*\
   Basic Electron Startup
@@ -55,7 +37,7 @@ function createWindow () {
   })
   UIView = win;
   //win.setMenu(null)
-  changeView('chat')
+  changeView('menu')
 }
 
 app.whenReady().then(createWindow)
@@ -114,6 +96,37 @@ ipcMain.on('exportCoversationToJSON', ()=>{
 
 })
 
+//Menu
+ipcMain.on('requestChat', (event, id)=>{
+
+  //Connect to the other user
+  if(false){
+    UIView.webContents.send('userConnection', {status:"failed", issue:"User Not found"})
+    return;
+  }  
+  
+  //Replace user with their data
+  otherUser = addressBook.filter((value)=>{return value.indentifier == id})[0]
+
+
+  //Load Chat history
+  //Create if does not exist
+
+
+  let tempHist = chatHistories[id] 
+  if(tempHist != null){
+    chat = new chatHistory(id, tempHist.speakers, tempHist.messages, tempHist.newID)
+  } else {
+    chat = new chatHistory(id)
+    chatHistories[id] = chat
+  }
+
+  //Move to other screen
+  changeView('chat')
+
+
+})
+
 /*##################################*\
   Internal Functions
 \*##################################*/
@@ -137,15 +150,15 @@ ipcMain.on('provideContactList', (event, searchValue, searchType)=>{
   let contacts = []
 
   if(searchType == 0){
-    contacts = addressBook.filter((value)=>{return value.name.indexOf(searchValue) != -1})
+    contacts = addressBook.filter((value)=>{return value.name.toLowerCase().indexOf(searchValue.toLowerCase()) != -1})
   } else {
-    contacts = addressBook.filter((value)=>{return value.publicKey.indexOf(searchValue.lowercase()) == 0})
+    contacts = addressBook.filter((value)=>{return value.publicKey.toLowerCase().indexOf(searchValue.toLowerCase()) == 0})
   }
 
   for (c of contacts){
 
     let tempValue = {name:c.name, indentifier:c.indentifier, publicKey:c.publicKey, IP:c.IP, status:"Online"}
-    innerHTML += fragmentStreamlined('contactListing.html', tempValue)
+    innerHTML += fragmentStreamlined('menu/contactListing.html', tempValue)
 
   }
 
@@ -169,6 +182,14 @@ function changeView(destination){
 
     case 'chat':
       UIView.loadFile('./UI/HTML/chat.html');
+      break    
+      
+    case 'chatHistory':
+      UIView.loadFile('./UI/HTML/chatHistory.html');
+      break    
+      
+    case 'blocklist':
+      UIView.loadFile('./UI/HTML/blocklist.html');
       break
 
     case 'menu':
@@ -200,13 +221,13 @@ function fragmentRouter(fragmentName){
   switch(fragmentName){
 
     case 'userData':
-      return fragmentStreamlined("userData.html", userData)
+      return fragmentStreamlined("chat/userData.html", userData)
 
     case 'otherUserData':
-      return fragmentStreamlined("otherUserData.html", otherUser)
+      return fragmentStreamlined("chat/otherUserData.html", otherUser)
 
     case 'hostData':
-      return fragmentStreamlined("hostData.html", {IP:"Bob", status:"Alive"})
+      return fragmentStreamlined("chat/hostData.html", {IP:"Bob", status:"Alive"})
 
   }
 
@@ -224,8 +245,13 @@ function SendText(chatText) {
     
     if(chat != null){
       let msgData = chat.addMSGuser(sanatizeText(chatText.payload), null)
+
+      chatHistories[otherUser.identifier] = chat
+
       UIView.webContents.send('inBoundChat', msgData)
     }
+
+
 
 }
 function DeleteMessage(msgID) {
@@ -234,12 +260,12 @@ function DeleteMessage(msgID) {
 	  chat.removeMSG(msgID)
 
 }
-function RecieveText(text, idenitfier) {
+function RecieveText(text, identifier) {
 
   console.log("Other Sent: " + chatText.payload)
 
   if(chat != null){
-    let msgData = chat.addMSGOther(idenitfier, sanatizeText(text), null)
+    let msgData = chat.addMSGOther(identifier, sanatizeText(text), null)
     UIView.webContents.send('inBoundChat', msgData)
   }
 }
@@ -281,3 +307,54 @@ function getUserIP(){
 function dissconnectFromHost(){
 
 }
+
+function populateAddressBook(){
+
+
+
+}
+
+
+/*##################################*\
+  Start Function
+\*##################################*/
+
+
+
+function start(){
+
+  userData = {key:"12345678", name:"Bob"}
+  hostConnectionData = new networkInformation("127.0.0.1", "9090", "user")
+  //otherUser = {key:"12345678", name:"Alice", IP:"",status:""}
+
+  //Note public keys here are hashes (Just here for debugging)
+  addressBook = [
+    {name:"Alice", indentifier:"5672", publicKey:"64489c85dc2fe0787b85cd87214b3810", IP: "127.0.0.1", status: "Online"},
+    {name:"Bob", indentifier:"7036", publicKey:"2fc1c0beb992cd7096975cfebf9d5c3b", IP: "127.0.0.1", status: "Online"},
+    {name:"Eve", indentifier:"4962", publicKey:"d3f791f59cbeff0ec06afb94bb23e772", IP: "127.0.0.1", status: "Online"},
+    {name:"Marvin", indentifier:"4085", publicKey:"7db16a4ce881aecec2bfeb3e0c741888", IP: "127.0.0.1", status: "Online"},
+    {name:"Oscar", indentifier:"8754", publicKey:"48a0572e6e7cfc81b428b18da87cf613", IP: "127.0.0.1", status: "Online"},
+    {name:"Peggy", indentifier:"9914", publicKey:"469a32447498e6238dab042c08098b98", IP: "127.0.0.1", status: "Online"},
+    {name:"Victor", indentifier:"337", publicKey:"82233bce59652cf3cc0eb7a03f3109d1", IP: "127.0.0.1", status: "Online"},
+    {name:"Trent", indentifier:"6200", publicKey:"a52f4256f1abed061d9cceee75907248", IP: "127.0.0.1", status: "Online"}
+  ]
+
+  chatHistories = {
+      5672: {newID: 3, messages: [
+        {order:0, speaker:-1, messageText:"Hello", metadata:{}}, 
+        {order:1, speaker:0, messageText:"Bonjour", metadata:{}},
+        {order:2, speaker:-1, messageText:"...", metadata:{}}
+      ], speakers: [{speakerID:0, identifier:5672}]
+
+      
+    }
+  }
+
+  outbound = new clientCommunication();
+  chat = new chatHistory(101013731);
+  outbound.establishConnection(hostConnectionData)
+
+}start();
+
+
+
