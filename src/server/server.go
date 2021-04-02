@@ -10,13 +10,12 @@ import (
 	"crypto/x509"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 
 	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
 )
 
 const (
-	port = ":8080"
+	port = ":50051"
 )
 
 type server struct {
@@ -67,7 +66,7 @@ func (s *server) UpdateKey(ctx context.Context, req *pb_server.KeyUpdate) (*pb_s
 
 	key, err := x509.ParsePKCS1PublicKey(req.GetNewKey())
 	if err != nil {
-		return &pb_server.Status{Status: 3}, errors.New("Non key passed as key")
+		return &pb_server.Status{Status: 3}, errors.New("non key passed as key")
 	}
 	err = updateKey(req.Username, key)
 	if err != nil {
@@ -95,16 +94,19 @@ func (s *server) GetUser(ctx context.Context, req *pb_server.Username) (*pb_serv
 
 func main() {
 	fmt.Println("Starting server")
-	creds, err := credentials.NewServerTLSFromFile("certs/server-cert.pem", "certs/server-key.pem")
-	if err != nil {
-		log.Fatalf("Failed to setup TLS: %v", err)
-	}
+	/*
+		creds, err := credentials.NewServerTLSFromFile("certs/server-cert.pem", "certs/server-key.pem")
+		if err != nil {
+			log.Fatalf("Failed to setup TLS: %v", err)
+		}
+	*/
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer(grpc.Creds(creds))
+	//s := grpc.NewServer(grpc.Creds(creds))
+	s := grpc.NewServer()
 	pb_server.RegisterServerServer(s, &server{})
 
 	err = connect()

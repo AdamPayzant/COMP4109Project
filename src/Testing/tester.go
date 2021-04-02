@@ -10,28 +10,30 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
-	"crypto/tls"
 	"crypto/x509"
 
 	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
-
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 func testServer() bool {
-	var serverAddress = "localhost:8080"
+	var serverAddress = "localhost:50051"
 
-	config := &tls.Config{
-		InsecureSkipVerify: false,
-	}
-	conn, err := grpc.Dial(serverAddress, grpc.WithTransportCredentials(credentials.NewTLS(config)))
+	/*
+		config := &tls.Config{
+			InsecureSkipVerify: false,
+		}
+		conn, err := grpc.Dial(serverAddress, grpc.WithTransportCredentials(credentials.NewTLS(config)))
+	*/
+	conn, err := grpc.Dial(serverAddress, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("Did not connect: %v", err)
 	}
+	fmt.Println("Connected")
 	defer conn.Close()
 	server := pb_server.NewServerClient(conn)
 
+	fmt.Println("Testing register")
 	key, _ := rsa.GenerateKey(rand.Reader, 2048)
 	var res = false
 	res = testRegister(server, key)
@@ -39,29 +41,37 @@ func testServer() bool {
 		fmt.Println("Failed to register user")
 		return false
 	}
+	fmt.Println("Passed")
+	fmt.Println("Testing get Token")
 	res, token := testGetToken(server)
 	if !res {
 		fmt.Printf("Failed to generate token")
 		return false
 	}
-	hash := sha512.New()
-	tok, _ := rsa.DecryptOAEP(hash, rand.Reader, key, token, nil)
+	fmt.Println("Passed")
+	fmt.Println("Testing update IP")
+	tok, _ := rsa.DecryptOAEP(sha512.New(), rand.Reader, key, token, nil)
 	res = testUpdateIP(server, tok)
 	if !res {
 		fmt.Println("Failed to update IP")
 		return false
 	}
+	fmt.Println("Passed")
+	fmt.Println("Testing update key")
 	newKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	res = testUpdateKey(server, tok, newKey)
 	if !res {
 		fmt.Println("Failed to update key")
 		return false
 	}
+	fmt.Println("Passed")
+	fmt.Println("Testing get user")
 	res = testGetUser(server, newKey)
 	if !res {
 		fmt.Println("Failed to get user")
 		return false
 	}
+	fmt.Println("Passed")
 	return true
 }
 
