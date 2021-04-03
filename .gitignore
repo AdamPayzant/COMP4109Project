@@ -7,8 +7,25 @@
 *.synctex.gz
 *.out
 
+#go
+pkg/
+
 # Node stuff
 node_modules/
 
 # vscode
 .vscode
+
+# Excludes built files
+src/server/server
+src/Testing/tester
+images/
+
+# Excludes any TLS stuff
+# This should be generated upon service creation
+ca-cert.pem
+ca-cert.srl
+ca-key.pem
+server-cert.pem
+server-key.pem
+server-req.pem

@@ -1,0 +1,14 @@
+FROM smvs/base:latest
+
+WORKDIR /go/src/smvs/server
+
+COPY . .
+
+RUN apk add openssl
+# Builds the actual server
+# Also removes APK to improve security
+RUN make cleanServer
+
+EXPOSE 8080
+
+CMD ["/go/src/smvs/server/server"]

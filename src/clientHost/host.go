@@ -4,14 +4,15 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"log"
 	"net"
 	"time"
 
-	pb_host "smvshost"
-	pb_server "smvsserver"
+	pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
+	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
 
 	"google.golang.org/grpc"
 )
@@ -28,7 +29,23 @@ type host struct {
 	pb_host.UnimplementedClientHostServer
 }
 
+/*
+	Message pipe line
+		Text
+			Sending: plain text -> RSA -> TLS/SSL (gRPC)
+			Receving: TLS/SSL (gRPC) -> RSA -> plain text
+		Video
+			Sending: stream -> TLS/SSL (gRPC)
+			Receving: TLS/SSL (gRPC) -> steam
+*/
+
 func (h *host) ReKey(ctx context.Context, req *pb_host.Token) (*pb_host.Status, error) {
+	/*
+		This function is used to update the public key for the RSA encryption.
+		The public key can only be changed if the correct auth key is provided to the main server
+		The private key should only exist on TRUSTED end user clients.
+	*/
+
 	/*
 		This is currently just in a state to demo gRPC call
 		Plenty of stuff still to do
@@ -79,9 +96,12 @@ func (h *host) GetConversation(ctx context.Context, req *pb_host.Username) (*pb_
 }
 
 func main() {
-	// This bit connects the host to the server
-	// TODO: This should be made to use a secure TLS connection
-	conn, err := grpc.Dial(serverAddress, grpc.WithInsecure(), grpc.WithBlock())
+	// Connects to the central server
+	// Current uses self-signed TLS for this, I'd rather not go through a CA unless this is actually deployed
+	config := &tls.Config{
+		InsecureSkipVerify: false,
+	}
+	conn, err := grpc.Dial(serverAddress, grpc.WithTransportCredentials(crendentials.NewTLS(config)))
 	if err != nil {
 		log.Fatalf("Did not connect: %v", err)
 	}

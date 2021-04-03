@@ -1,38 +1,39 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
 	crand "crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
+	"crypto/sha512"
+	"crypto/x509"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"database/sql"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
-var collection *mongo.Collection = nil
+var db *sql.DB = nil
 
 const (
 	timeOut = 900000000000 // 15 minutes in nanoseconds
+	dbName  = "smvs:password@tcp(localhost:3306)/smvsServer"
 )
 
-type Token struct {
-	Token    []byte
-	Assigned time.Time
-}
-
 type User struct {
-	Username string
-	Key      rsa.PublicKey
-	IP       string
-	Tokens   []Token // We may want to store these tokens more securely, them leaking could be pretty damning
+	UserID   int    `json:"userID"`
+	Username string `json:"username"`
+	PubKey   []byte `json:"pubKey"`
+	IP       string `json:"ip"`
+}
+type Token struct {
+	TokenID  int       `json:"tokenID"`
+	UserID   int       `json:"userID"`
+	Content  []byte    `json:"content"`
+	Assigned time.Time `json:"assigned"`
 }
 
 /*
@@ -42,23 +43,55 @@ type User struct {
 		error - If there's an error
 */
 func connect() error {
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-
-	// Connects to the DB server
-	client, err := mongo.Connect(context.TODO(), clientOptions)
+	db, _ = sql.Open("mysql", dbName+"?parseTime=true")
+	err := db.Ping()
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
-	// Checks the connection
-	err = client.Ping(context.TODO(), nil)
+	c := `
+		CREATE TABLE IF NOT EXISTS users (
+			userID INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			username TEXT,
+			pubKey BLOB,
+			ip TEXT
+		);
+	`
+	_, err = db.Exec(c)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
-	collection = client.Database("SMVS").Collection("Users")
-
-	fmt.Println("Connected to DB")
+	c = `
+		CREATE TABLE IF NOT EXISTS tokens (
+			tokenID INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			userID INTEGER,
+			content BLOB,
+			assigned TIMESTAMP,
+			FOREIGN KEY (userID) REFERENCES users(userID)
+		);
+	`
+	_, err = db.Exec(c)
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	c = `
+		CREATE TRIGGER IF NOT EXISTS userDel
+			AFTER DELETE ON users FOR EACH ROW
+		BEGIN
+			DELETE FROM tokens
+			WHERE userID=OLD.userID;
+		END;
+	`
+	_, err = db.Exec(string(c))
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	fmt.Println("Connected to db")
 	return nil
 }
 
@@ -73,23 +106,11 @@ func connect() error {
 		error - If there's an error adding the user to the system
 */
 func addUser(username string, publickey *rsa.PublicKey, ip string) error {
-	// Does some error checking
-	if collection == nil {
-		return errors.New("Collection Not Defined")
+	_, err := db.Exec("INSERT INTO users (username, pubKey, ip) VALUES(?, ?, ?)",
+		username, x509.MarshalPKCS1PublicKey(publickey), ip)
+	if err != nil {
+		return err
 	}
-	filter := bson.D{{Key: "username", Value: username}}
-	err := collection.FindOne(context.TODO(), filter)
-	if err == nil {
-		return errors.New("User Already Exists")
-	}
-
-	user := User{username, *publickey, ip, nil}
-	insertResults, er := collection.InsertOne(context.TODO(), user)
-	if er != nil {
-		return er
-	}
-
-	fmt.Printf("Successfully added user %q", insertResults.InsertedID)
 	return nil
 }
 
@@ -105,16 +126,17 @@ func addUser(username string, publickey *rsa.PublicKey, ip string) error {
 		error  - nil unless error occurs
 */
 func addToken(username string) ([]byte, error) {
-	if collection == nil {
-		return nil, errors.New("Collection Not Defined")
+	var userID int
+	var key []byte
+	// Gets the user's id and public key
+	err := db.QueryRow("SELECT userID, pubKey FROM users WHERE username=?", username).Scan(&userID, &key)
+	if err != nil {
+		return nil, err
 	}
 
-	// Gets the user
-	var user User
-	filter := bson.D{{Key: "username", Value: username}}
-	err := collection.FindOne(context.TODO(), filter).Decode(&user)
+	pubKey, err := x509.ParsePKCS1PublicKey(key)
 	if err != nil {
-		return nil, errors.New("User Does Not Exist")
+		return nil, err
 	}
 
 	// Generates a 64 character long token
@@ -126,32 +148,22 @@ func addToken(username string) ([]byte, error) {
 	}
 	str := string(b)
 
-	var keys = make([]Token, len(user.Tokens))
-	for i := 0; i < len(user.Tokens); i++ {
-		keys[i] = user.Tokens[i]
+	_, err = db.Exec("INSERT INTO tokens (userid, content) VALUES(?, ?)", userID, str)
+	if err != nil {
+		return nil, err
 	}
-
-	var newToken Token
-	newToken.Token = []byte(str)
-	newToken.Assigned = time.Now()
-	keys[len(keys)-1] = newToken
-
-	update := bson.M{"$set": bson.M{"Tokens": keys}}
-
 	// Encrypts the token
 	encryptedToken, er := rsa.EncryptOAEP(
-		sha256.New(),
+		sha512.New(),
 		crand.Reader,
-		&user.Key,
+		pubKey,
 		[]byte(str),
 		nil)
 	if er != nil {
 		return nil, er
 	}
 
-	// If there's been no errors up until this point, adds token to user
-	collection.UpdateOne(context.TODO(), filter, update)
-
+	go pruneTokens()
 	return encryptedToken, nil
 }
 
@@ -166,57 +178,31 @@ func addToken(username string) ([]byte, error) {
 		bool - Whether the token is accepted or not
 */
 func checkToken(username string, token []byte) (bool, error) {
-	if collection == nil {
-		return false, errors.New("Collection Not Defined")
-	}
-
-	// Gets the user
-	var user User
-	filter := bson.D{{Key: "username", Value: username}}
-	err := collection.FindOne(context.TODO(), filter).Decode(&user)
+	pruneTokens()
+	var userID int
+	err := db.QueryRow("Select userID FROM users WHERE username=?", username).Scan(&userID)
 	if err != nil {
-		return false, errors.New("User Does Not Exist")
+		return false, err
 	}
-
-	clone := make([]Token, len(user.Tokens))
-
-	var i = 0
-	// This defer bit was an attempt to improve responsiveness
-	// Basically makes it so it can return while still pruning
-	// Also I love/hate the go garbage collecter, but effectively all pointers are smart pointer (data is only deleted when last pointer is out of scope)
-	defer pruneTokens(filter, &user, &i, &clone)
-	for ; i < len(user.Tokens); i++ {
-		t := time.Now()
-		b := user.Tokens[i]
-		if t.Sub(b.Assigned) < timeOut {
-			if bytes.Compare(token, b.Token) == 0 {
-				// Resets the time on the token
-				temp := Token{b.Token, t}
-				clone = append(clone, temp)
-				return true, nil
-			}
-			clone = append(clone, b)
+	err = db.QueryRow("Select tokenID FROM tokens WHERE userID=? AND content=?",
+		userID, token).Scan(&token)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return false, err
 		}
+		return false, nil
 	}
-	return false, nil
+	return true, nil
 }
 
 /*
-A function that continues pruning after parent function
+A function that continues pruning after parent function finishes
 */
-func pruneTokens(filter bson.D, user *User, iter *int, clone *[]Token) {
-	i := *iter
-	for i = i + 1; i < len(user.Tokens); i++ {
-		t := time.Now()
-		b := user.Tokens[i]
-		if t.Sub(b.Assigned) < timeOut {
-			*clone = append(*clone, b)
-		}
+func pruneTokens() {
+	_, err := db.Exec("DELETE FROM tokens WHERE assigned<?", time.Now().Add(-time.Minute*15).Format(time.RFC3339))
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	// Updates with the pruned token list
-	update := bson.M{"$set": bson.M{"Tokens": *clone}}
-	collection.UpdateOne(context.TODO(), filter, update)
 }
 
 /*
@@ -229,22 +215,8 @@ func pruneTokens(filter bson.D, user *User, iter *int, clone *[]Token) {
 		error - If there's an error updating the IP for whatever reason
 */
 func updateIP(username string, ip string) error {
-	if collection == nil {
-		return errors.New("Collection Not Defined")
-	}
-
-	// Gets the user
-	var user User
-	filter := bson.D{{Key: "username", Value: username}}
-	err := collection.FindOne(context.TODO(), filter).Decode(&user)
-	if err != nil {
-		return errors.New("User Does Not Exist")
-	}
-
-	update := bson.M{"$set": bson.M{"IP": ip}}
-	collection.UpdateOne(context.TODO(), filter, update)
-
-	return nil
+	_, err := db.Exec("UPDATE users SET ip=? WHERE username=?", ip, username)
+	return err
 }
 
 /*
@@ -257,22 +229,8 @@ func updateIP(username string, ip string) error {
 		error - Reports if an error occured
 */
 func updateKey(username string, publicKey *rsa.PublicKey) error {
-	if collection == nil {
-		return errors.New("Collection Not Defined")
-	}
-
-	// Gets the user
-	var user User
-	filter := bson.D{{Key: "username", Value: username}}
-	err := collection.FindOne(context.TODO(), filter).Decode(&user)
-	if err != nil {
-		return errors.New("User Does Not Exist")
-	}
-
-	update := bson.M{"$set": bson.M{"Key": publicKey}}
-	collection.UpdateOne(context.TODO(), filter, update)
-
-	return nil
+	_, err := db.Exec("UPDATE users SET pubKey=? WHERE username=?", x509.MarshalPKCS1PublicKey(publicKey), username)
+	return err
 }
 
 // TODO: Write this
@@ -290,21 +248,7 @@ func searchUser(partialname string) ([]string, error) {
 		publickey - The target user's public key
 		err - If there's an error finding the user
 */
-func getUser(username string) (ip string, key rsa.PublicKey, err error) {
-	if collection == nil {
-		return "", key, errors.New("Collection Not Defined")
-	}
-
-	// Gets the user
-	var user User
-	filter := bson.D{{Key: "username", Value: username}}
-	err = collection.FindOne(context.TODO(), filter).Decode(&user)
-	if err != nil {
-		return ip, key, errors.New("User Does Not Exist")
-	}
-
-	ip = user.IP
-	key = user.Key
-
-	return ip, key, nil
+func getUser(username string) (ip string, key []byte, err error) {
+	err = db.QueryRow("SELECT pubKey, ip FROM users WHERE username=?", username).Scan(&key, &ip)
+	return ip, key, err
 }
