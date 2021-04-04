@@ -25,7 +25,7 @@
 
             <!-- Return to main menu -->
             <div style="grid-row: 1;" id="returnArea" class="standardPadding">
-                <button style="height: 100%; width: 100%;" class="" onclick="moveScreens('menu')"> To Main Menu &rarr; </button>
+                <button style="height: 100%; width: 100%;" class="" onclick="disconnectClient()"> To Main Menu &rarr; </button>
             </div>
 
             <!-- Client Login -->
@@ -108,7 +108,7 @@
                 ipcRenderer.send('moveTo', loc)
             }
             function disconnectClient(){
-                moveScreens('login')
+                ipcRenderer.send('endChat')
             }
             function send() {
                 let message = {"functionClass":"chat", "functionName":"echo", "payload":input.value}
