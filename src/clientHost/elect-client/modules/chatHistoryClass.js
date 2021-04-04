@@ -29,8 +29,8 @@ exports.chatHistory = class chatHistory{
     this.messages.push({order:this.newID++, speaker:id, messageText:text, metadata:metadata})
   }
 
-  addMSGOther(identifier, text, matadata){
-    this.createNewMessageEntry(id, text, metadata)
+  addMSGOther(identifier, text, metadata){
+    this.createNewMessageEntry(identifier, text, metadata)
     return this.getLastMessage()
   }
   addMSGuser(msg, metadata){

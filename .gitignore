@@ -11,6 +11,7 @@
 node_modules/
 node_modules_windows/
 node_modules_linux/
+Junk/
 
 # vscode
 .vscode
