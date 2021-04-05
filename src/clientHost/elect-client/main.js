@@ -104,7 +104,7 @@ ipcMain.on('exportCoversationToJSON', (event)=>{
 
 //Menu
 ipcMain.on('requestChat', (event, id)=>{
-  InitializeConvo(id);
+  requestChat(id);
 })
 
 ipcMain.on('updateUser', (event, name)=>{
@@ -124,6 +124,7 @@ ipcMain.on('endChat', (event)=>{
 ipcMain.on('endHostConnection', (event)=>{
 
   //Disconnect Action Here()
+
 
 })
 
@@ -210,18 +211,19 @@ function fragmentRouter(fragmentName){
       return fragmentStreamlined("chat/otherUserData.html", otherUser)
 
     case 'hostData':
-      return fragmentStreamlined("chat/hostData.html", {IP:"Bob", status:"Alive"})
+      return fragmentStreamlined("chat/hostData.html", hostConnectionData)
 
     case 'hostConnectionMenu':
-      return fragmentStreamlined("menu/hostConnection.html", {IP:"Bob", status:"Alive"})
+      return fragmentStreamlined("menu/hostConnection.html", hostConnectionData)
 
     case 'hostConnectionForm':
-      return fragmentStreamlined("menu/hostConnectForm.html", {IP:"Bob", status:"Alive"})
+      return fragmentStreamlined("menu/hostConnectForm.html", hostConnectionData)
   
-
     case 'userInfoMenu':
       return fragmentStreamlined("menu/userInfoSection.html", userData)
 
+    case 'chatRequestForm':
+        return fragmentStreamlined("menu/chatRequestForm.html", userData)
   }
 
   return ""
@@ -261,8 +263,7 @@ function RecieveText(text, identifier) {
   }
 }
 
-/* Events for Conversations*/
-function InitializeConvo(id) {
+function requestChat(id){
 
   //Connect to the other user
   if(chat != null || otherUser != null){
@@ -276,37 +277,41 @@ function InitializeConvo(id) {
     otherUser = addressBook.filter((value)=>{return value.indentifier == id})[0] || null;
   }
 
-/*
+  /*
 
-  //Open Dialog
-  //convoObject = returnOfForm(otherUser)
+    //Open Dialog
+    //convoObject = returnOfForm(otherUser)
 
-  //Start Connection
-  if(false){
-    UIView.webContents.send('userConnection', {status:"failed", issue:"User Not found"})
-    return;
-  }  
-*/
+    //Start Connection
+    if(false){
+      UIView.webContents.send('userConnection', {status:"failed", issue:"User Not found"})
+      return;
+    }  
+  */
 
   //Load user data
-  GetConversation(id);
+  loadChatData(id);
 
   //Move to other screen
   changeView('chat')
 
 }
 
-function ConfirmConvo() {
+function confirmChat(){
 
-  let responce = dialog.showMessageBoxSync(UIView, {
-    message:"XXXX would like to chat with you.",
-    type:"info",
-    buttons:["Accept", "Deny"],
-    defaultID:1,
-    title:"Chat Request",
-    cancelId:1
-  });
-  
+  let responce = 1;
+
+  if(chat != null || otherUser != null){
+    responce = dialog.showMessageBoxSync(UIView, {
+        message:"XXXX would like to chat with you.",
+        type:"info",
+        buttons:["Accept", "Deny"],
+        defaultID:1,
+        title:"Chat Request",
+        cancelId:1
+      });
+  }
+
   //Deny Selected
   if(responce){
 
@@ -319,8 +324,10 @@ function ConfirmConvo() {
   }
 
   return;
+
 }
-function GetConversation(id) {
+
+function loadChatData(id){
 
   //Replace user getting data from other source
   
@@ -335,6 +342,18 @@ function GetConversation(id) {
     chatHistories[id] = chat
   }
 
+
+}
+
+
+/* Events for Conversations*/
+function InitializeConvo() {
+}
+
+function ConfirmConvo() {
+}
+
+function GetConversation() {
 }
 
 /* Host connection events */
@@ -395,9 +414,6 @@ function populateAddressBook(searchValue, searchType){
 /*##################################*\
   Start Function
 \*##################################*/
-
-
-
 function start(){
 
   userData = {key:"12345678", name:"Bob"}
@@ -415,17 +431,13 @@ function start(){
     {name:"Victor", indentifier:"337", publicKey:"82233bce59652cf3cc0eb7a03f3109d1", ip: "127.0.0.1", port:"9090", status: "Online"},
     {name:"Trent", indentifier:"6200", publicKey:"a52f4256f1abed061d9cceee75907248", ip: "127.0.0.1", port:"9090", status: "Online"}
   ]
-
   chatHistories = {
       5672: {newID: 3, messages: [
         {order:0, speaker:-1, messageText:"Hello", metadata:{}}, 
         {order:1, speaker:0, messageText:"Bonjour", metadata:{}},
         {order:2, speaker:-1, messageText:"...", metadata:{}}
       ], speakers: [{speakerID:0, identifier:5672}]
-
-      
-    }
-  }
+  }}
 
   outbound = new clientCommunication();
   //chat = new chatHistory(101013731);
