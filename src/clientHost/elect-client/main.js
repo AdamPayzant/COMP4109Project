@@ -443,6 +443,12 @@ function start(){
   //chat = new chatHistory(101013731);
   outbound.establishConnection(hostConnectionData)
 
+/*
+  const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs;
+  let abcde = new clientConstructor.client(networkAddr, grpcLibrary.credentials.createInsecure())
+  abcde.
+  */
+
 }start();
 
 
