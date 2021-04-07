@@ -33,6 +33,7 @@ var db *sql.DB
 var encryptMSG bool
 var clientPublicKey *rsa.PublicKey
 var hostPrivateKey *rsa.PrivateKey
+var clientPrivateKey *rsa.PrivateKey
 
 type UserInfo struct {
 	name       string
@@ -73,7 +74,7 @@ func RSA_OAEP_Decrypt(cipherText string, privKey rsa.PrivateKey) string {
 	if err != nil {
 		log.Fatalf("Failed to DecryptOAEP: %v", err)
 	}
-	fmt.Println("Plaintext:", string(plaintext))
+	// fmt.Println("Plaintext:", string(plaintext))
 	return string(plaintext)
 }
 
@@ -302,7 +303,6 @@ func (h *host) RecieveText(ctx context.Context, req *pb_host.H2HText) (*pb_host.
 		statement, _ := db.Prepare("INSERT INTO conversations (user, id, sender, year, month, day, hour, minute, second, msg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		for _, msg := range req.Message.Messages {
 			if encryptMSG {
-				fmt.Println("TEst")
 				msg = RSA_OAEP_Encrypt(msg, *clientPublicKey)
 			}
 
@@ -383,11 +383,15 @@ func tryLoadPublicKey() {
 	if err == nil {
 		raw, _ := ioutil.ReadFile("./client_public.pem")
 		block, _ := pem.Decode([]byte(raw))
-		key, e := x509.ParsePKCS1PublicKey(block.Bytes)
+		if block == nil {
+			fmt.Println("unable to decode publicKey to request")
+		}
+		key, e := x509.ParsePKIXPublicKey(block.Bytes)
 		if e != nil {
 			log.Fatalf("%v", e)
 		}
-		clientPublicKey = key
+
+		clientPublicKey = key.(*rsa.PublicKey)
 		encryptMSG = true
 	}
 }
@@ -395,7 +399,7 @@ func tryLoadPublicKey() {
 func main() {
 	encryptMSG = false
 	userInfoCache = make(map[string]*UserInfo)
-
+	// generateClientKeys()
 	tryLoadPublicKey()
 	initDB()
 
