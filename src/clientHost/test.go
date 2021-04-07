@@ -54,9 +54,9 @@ func main() {
 	defer conn.Close()
 	server = pb_host.NewClientHostClient(conn)
 
-	response, err := server.RecieveText(context.Background(), &pb_host.H2HText{Message: &pb_host.ListofMessages{Messages: []string{"test", "test", "test"}}, User: "Me", Secret: "TEst"})
+	response, err := server.SendText(context.Background(), &pb_host.ClientText{TargetUser: "Test0", Message: &pb_host.ListofMessages{Messages: []string{"test", "test", "test"}}, Token: "TEst"})
 	if err != nil {
-		log.Fatalf("Error when calling InitializeConvo: %s", err)
+		log.Fatalf("Error when calling SendText: %s", err)
 	}
 	log.Printf("Response from server: %s", response.Status)
 
