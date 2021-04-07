@@ -302,6 +302,7 @@ func (h *host) RecieveText(ctx context.Context, req *pb_host.H2HText) (*pb_host.
 		statement, _ := db.Prepare("INSERT INTO conversations (user, id, sender, year, month, day, hour, minute, second, msg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		for _, msg := range req.Message.Messages {
 			if encryptMSG {
+				fmt.Println("TEst")
 				msg = RSA_OAEP_Encrypt(msg, *clientPublicKey)
 			}
 
@@ -380,12 +381,14 @@ func tryLoadPublicKey() {
 	_, err := os.Stat("./client_public.pem")
 
 	if err == nil {
-		bytes, _ := ioutil.ReadFile("./client_public.pem")
-		block, _ := pem.Decode([]byte(bytes))
-		key, _ := x509.ParsePKCS1PublicKey(block.Bytes)
+		raw, _ := ioutil.ReadFile("./client_public.pem")
+		block, _ := pem.Decode([]byte(raw))
+		key, e := x509.ParsePKCS1PublicKey(block.Bytes)
+		if e != nil {
+			log.Fatalf("%v", e)
+		}
 		clientPublicKey = key
 		encryptMSG = true
-		fmt.Println("Test")
 	}
 }
 
