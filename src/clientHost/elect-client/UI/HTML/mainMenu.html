@@ -1,0 +1,150 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <title>Hello World</title>
+
+        <link rel="stylesheet" type="text/css" href="../CSS/mainMenu.css" />
+        <link rel="stylesheet" type="text/css" href="../CSS/style.css" />
+
+    </head>
+
+    <body>
+
+        <div style="z-index: 1; background-color: rgba(240, 255, 255, 0.75); position: absolute; height: 100%; width:100%;
+        grid-template-columns: auto 720px auto; grid-template-rows: auto 480px auto; display: none;" id="overlayOuter">
+
+            <div style="grid-area: 2 / 2; background-color: snow; height:100%; width: 100%; border: black solid 5px;"
+            id="overlayInner">
+
+            </div>
+
+        </div>
+
+        <!-- Select a client that the user wants to chat with -->
+        <div class="containerItem contactOuterGrid"> 
+        <div class="contactInnerGrid">
+        
+            <!-- Contacts -->
+            <div class="contactSelectionArea" id="contactSelectionArea">
+            </div>
+            
+            <!-- Search Bar -->
+            <input type="text" placeholder="Search Bar" id="contactSearch" style="grid-column: 1; grid-row: 2;" value="" oninput="populateContactList()"> </input>
+            <select name="searchoptions" id="searchoptions" style="grid-column: 2; grid-row: 2;">
+                <option value="name"> Name </option>
+                <option value="public key"> Public Key </option>
+            </select>
+
+            <button type="button" style="grid-column: 4; grid-row: 2;" onclick="showConnectionArea()"> One Time Connection </button>
+            <button type="button" style="grid-column: 5; grid-row: 2;" onclick="showConnectionArea()" disabled> New Contact </button>
+        
+        </div></div>
+
+
+        <!-- Display Connection information -->
+        <div style="grid-column: 1; grid-row: 3;" id="area1" class="containerItem">
+        </div>
+
+        <!-- Display user identity-->
+        <div style="grid-column: 2; grid-row: 3;" id = "area2" class="containerItem">
+        </div>
+
+        <!-- Settings Menu?-->
+        <div style="grid-column: 3; grid-row: 3;" class="containerItem"> 
+
+        <div style="display: grid; grid-row-gap: 5px; grid-template-columns: 45% calc(10% - 40px) 45%; 
+        grid-template-rows: 20% 20% 20% 20%; padding: 15px; height: calc(100% - 30px); width: calc(100% - 30px);">
+
+            <div style="grid-area: 1 / 1 / 2 / 4; " class="emptyBox""  class="textFeild"> 
+                <h3 class="centeredText">Additional Functions</h3> 
+            </div> 
+
+            <button style="grid-area: 2 / 1;"> Delete Contact </button>
+            <button style="grid-area: 2 / 3;"> </button>
+
+            <button style="grid-area: 3 / 1;"> </button>
+            <button style="grid-area: 3 / 3;"> </button>
+
+            <button style="grid-area: 4 / 1;"> View Chat History </button>
+            <button style="grid-area: 4 / 3;"> Visit Blocklist </button>
+
+        </div>
+        </div>
+
+        <script> 
+        
+
+        const { ipcRenderer, dialog } = require("electron")
+        
+        function populateContactList(){
+
+            //Default value for "Name"
+            let searchType = 0
+
+            if(document.getElementById('searchoptions').value == 'public key')
+                searchType = 1
+
+            let searchValue =  document.getElementById('contactSearch').value
+            document.getElementById('contactSelectionArea').innerHTML = ipcRenderer.sendSync('provideContactList', searchValue, searchType)
+        }
+
+        function start(){
+            populateContactList()
+            document.getElementById('area1').innerHTML = ipcRenderer.sendSync('renderFrament','userInfoMenu')
+            //document.getElementById('area2').innerHTML = ipcRenderer.sendSync('renderFrament','hostConnectionForm')
+            document.getElementById('area2').innerHTML = ipcRenderer.sendSync('renderFrament','hostConnectionMenu')
+            
+
+        }
+
+        function updateUserInfo(){
+
+            let userName = document.getElementById("userInfoName").value;
+            ipcRenderer.send('updateUser', userName)
+
+        }
+        
+        function requestChat(id){
+            ipcRenderer.send('requestChat', id)
+        }
+
+
+        function showConnectionArea(){
+            document.getElementById('overlayInner').innerHTML = ipcRenderer.sendSync('renderFrament','chatRequestForm');
+            document.getElementById('overlayOuter').style.display = "grid";
+
+        }
+
+        function makeChatRequest(){
+            hideConnectionArea();
+        }
+
+        function hideConnectionArea(){
+            document.getElementById('overlayInner').innerHTML = "";
+            document.getElementById('overlayOuter').style.display = "none";
+        }
+
+
+        
+        function disconnectFromHost(){
+            ipcRenderer.send('endHostConnection');
+        }
+
+        ipcRenderer.on('chatRequest', (event, message)=>{
+
+        })
+
+        ipcRenderer.on('hostDisconnect', (event)=>{
+            document.getElementById('area2').innerHTML = ipcRenderer.sendSync('renderFrament','hostConnectionForm')
+        })
+
+        ipcRenderer.on('hostConnect', (event)=>{
+            document.getElementById('area2').innerHTML = ipcRenderer.sendSync('renderFrament','hostConnectionMenu')
+        })
+
+        start()
+        
+        </script>
+
+    </body>
+</html>

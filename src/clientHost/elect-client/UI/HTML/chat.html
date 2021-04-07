@@ -1,0 +1,195 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <title id="title">Hello World</title>
+
+        <link rel="stylesheet" type="text/css" href="../CSS/chat.css" />
+        <link rel="stylesheet" type="text/css" href="../CSS/style.css" />
+
+    </head>
+
+    <body>
+
+        <!-- Text Window -->
+        <div class="chatContainer TextWindow " id="output"></div>
+
+
+        <!-- Text Input -->
+        <div class="inputArea" style="display: grid; grid-template-columns: auto 100px; height: calc(100% - 10px); width: calc(100% - 10px);">
+            <textarea rows="4" cols="50"  id="input" type="text"  style="grid-column: 1; resize:none; font-size:larger;"></textarea>
+            <button onclick="send()" style="grid-column: 2;">Send</button>
+        </div>
+        
+        <!-- Side Bar -->
+        <div class="sidebar">
+
+            <!-- Return to main menu -->
+            <div style="grid-row: 1;" id="returnArea" class="standardPadding">
+                <button style="height: 100%; width: 100%;" class="" onclick="disconnectClient()"> To Main Menu &rarr; </button>
+            </div>
+
+            <!-- Client Login -->
+            <div style="grid-row: 2;" id="userData">
+            </div>
+
+            <!-- Area 1 -->
+            <div style="grid-row: 3;" id="otherUserData">
+            </div>
+            
+            <!-- Area 2 -->
+            <div style="grid-row: 4;" id="hostData">
+            </div>
+
+            <!-- Area 3 -->
+            <div style="grid-row: 5; width: 100%; height:100%;" id = "area4" class="standardPadding">
+            </div>
+
+            <!-- Web Connection -->
+            <div  style="grid-row: 6;" id = "void" class="standardPadding"></div>
+
+        </div>
+
+
+        <div id="contextMenu" class="context-menu" style="display: none"> </div> 
+        <input id="clipboard" type="text" action="none" style="display: none"> </input> 
+
+        <script>
+
+            var input = document.getElementById("input");
+            var output = document.getElementById("output");
+            var statusArea = document.getElementById("clinetSatus");
+            const { ipcRenderer } = require("electron")
+
+            let connectionData = {"network": "", "port": "", "username": ""};
+
+            function postToChat(e){
+                output.innerHTML += formatMessageForDisplay(e)
+                console.log(JSON.stringify(e))
+                /*if(e.userid == -1)*/
+                document.getElementById(`chatMessage${e.order}`).oncontextmenu = (ev)=>{rightClick(ev, e.order);};
+            }
+
+            function formatMessageForDisplay(message){
+
+                let chatID = message.speaker || 0
+                let chatMSG = message.messageText || ""
+                let msgType = "chatBubbleClient"
+                let msgID = message.order 
+
+                let msgColor = 1;
+
+                if(chatID == -1){
+                    msgColor = 0;
+                    msgType = "chatBubbleUser"
+                } else {
+                    msgColor = (chatID % 11) + 1
+                }
+
+                return `<div onmouseover="setUpContextMenu(${msgID})" id="chatMessage${msgID}" class="chatBubbleOuter">
+                        <div class="colormarkerOuter"> <div class="chatBubble${""+msgColor} colormarkerInner">  </div></div>
+                        <pre title="1" class="${msgType} chatBubbleInner" style="margin:0px">${chatMSG}</pre>
+                        </div`
+            }
+
+            function setUpContextMenu(msgID){
+                document.getElementById('contextMenu').innerHTML = `<ul> 
+                        <li onclick="deleteMsg(${msgID})" ><a href="#">Delete</a></li> 
+                        <li onclick="copyText(${msgID})" ><a href="#">Copy Text</a></li> 
+                        <li onclick="copyMessage(${msgID})" ><a href="#">Copy Message (JSON)</a></li> 
+                    </ul>`
+                document.getElementById(`chatMessage${msgID}`).oncontextmenu = msgContextMenu;
+            }
+
+            /*##################################*\
+                Application functions
+            \*##################################*/
+
+            function moveScreens(loc){
+                ipcRenderer.send('moveTo', loc)
+            }
+            function disconnectClient(){
+                ipcRenderer.send('endChat')
+            }
+            function send() {
+                let message = {"functionClass":"chat", "functionName":"echo", "payload":input.value}
+                input.value = "";
+                sendChat(message)
+            }
+            function copyText(msgID){
+                ipcRenderer.send('copyMessageText', msgID)
+            }
+            function copyMessage(msgID){
+                ipcRenderer.send('copyMessageJSON', msgID)
+            }
+
+            /*##################################*\
+                IPC Calls
+            \*##################################*/
+            function sendChat(message){
+                ipcRenderer.send('chatSent', message)
+            }
+            function deleteMsg(msgID){
+                if(confirm("Are you sure that you want to delete this message?")){
+                    document.getElementById(`chatMessage${msgID}`).remove()
+                    ipcRenderer.send('deleteMSG', msgID)
+                }
+            }
+            function loginAttempt(message){
+                ipcRenderer.send('loginAttempt', message);         
+            }
+
+            /*##################################*\
+                IPC Events
+            \*##################################*/
+            ipcRenderer.on('inBoundChat', (event, messageText)=>{
+                postToChat(messageText)
+            })
+            ipcRenderer.on('loginStatus', (event, result)=>{
+            })
+
+            /*##################################*\
+                Start Functions
+            \*##################################*/
+            function start(){
+
+                document.getElementById('userData').innerHTML = ipcRenderer.sendSync('renderFrament', 'userData');
+                document.getElementById('otherUserData').innerHTML = ipcRenderer.sendSync('renderFrament', 'otherUserData');
+                document.getElementById('hostData').innerHTML = ipcRenderer.sendSync('renderFrament', 'hostData');
+
+                let chatHistory = ipcRenderer.sendSync('fetch', 'activeChat')
+
+                for (x of chatHistory.messages)
+                    postToChat(x)
+
+                document.getElementById('title').innerHTML = "Chat with " + ipcRenderer.sendSync('fetch', 'otherClientName')
+            }
+
+            start();
+
+            /*##################################*\
+                Context Menu Functions
+            \*##################################*/
+            document.onclick = hideMenu;
+
+            function hideMenu() { 
+                document.getElementById("contextMenu").style.display = "none" 
+            } 
+
+            function msgContextMenu(event) { 
+                event.preventDefault(); 
+
+                if (document.getElementById("contextMenu").style.display == "block") {
+                    hideMenu();
+                } else { 
+                    var menu = document.getElementById("contextMenu") 
+                        
+                    menu.style.display = 'block'; 
+                    menu.style.left = event.pageX + "px"; 
+                    menu.style.top = event.pageY + "px"; 
+                } 
+            } 
+        </script> 
+
+    </body>
+
+</html>
