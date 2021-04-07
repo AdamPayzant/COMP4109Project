@@ -1,0 +1,31 @@
+Host:
+    IP
+    Connected
+
+
+Other Client:
+    IP
+    Name
+    Public Key
+    Connected
+
+Client Evenets:
+
+    User Caused
+        Send message
+        Delete message
+
+        Start Converstation
+        Accept Converstation
+
+        End Converstation
+        Disconnect
+
+    External Origin
+        Recieve Message 
+
+        Request Converstation
+        Converstation End
+
+        Connection ended
+

@@ -1,0 +1,8 @@
+<div style="margin:0px; display:grid; grid-gap: 0%; grid-template-columns: 5% 45% 30% 10% 5%; grid-template-rows: 20% 20% 20% 20% 20%; height:100%; height:100%;">
+    <input id="addr" placeholder="network address" type="text" value="${connectionData.network}" style="font-size: small;grid-column: 2; grid-row: 2;"/>
+    <input id="port" placeholder="port" type="text" value="${connectionData.port}" style="grid-column: 3; grid-row: 2;"/>
+    <input id="user" placeholder="username" type="text" value="${connectionData.username}" style="grid-column: 2 / 4; grid-row: 3;"/>
+    <input id="pswd" placeholder="password" type="password" value="" style="grid-column: 2 / 4; grid-row: 4;"/>
+    <button onclick='makeChatRequest()' style=" font-size: small; grid-column: 4; grid-row: 2 / 4;">login</button>
+    <button onclick='hideConnectionArea()' style=" font-size: small; grid-column: 4; grid-row: 4 / 5;">cancel</button>
+</div>

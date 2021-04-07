@@ -1,0 +1,24 @@
+<div style="display: grid; grid-template-columns: 70% 30%; grid-template-rows: 10% 60% 10%; justify-content: space-around; 
+align-content: space-around; padding: 15px; height: calc(100% - 30px); width: calc(100% - 30px);">
+
+    <div style="grid-column: 1 / 3; grid-row: 1; " class="emptyBox" class="emptyBox"> 
+        <h3 style="margin: auto auto auto auto; height: 100%; width: 100%;">Profile</h1> 
+    </div> 
+
+    <div style="grid-column: 1 / 3; grid-row: 2; display: grid; grid-gap: 5px; grid-template-columns: 30% calc(70% - 5px); grid-auto-rows: auto;">
+        
+        <div style="grid-area: 1 / 1; " class="emptyBox">  
+            <div style="margin: auto auto auto auto; height: max-content; width: max-content;">Alias</div> 
+        </div> 
+        <input type="text" style="grid-area: 1 / 2; " class="emptyBox" id="userInfoName"  value="${name}"/>
+
+        <div style="grid-area: 2 / 1; " class="emptyBox">  
+            <div style="margin: auto auto auto auto; height: max-content; width: max-content;">Public Key</div> 
+        </div> 
+        <input type="text" style="grid-area: 2 / 2; " class="emptyBox" value="12345678"/>
+
+    </div>
+    
+    <button style="grid-column: 2 / 3; grid-row: 3;" onclick="updateUserInfo()"> update </button>
+
+</div>

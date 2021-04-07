@@ -8,7 +8,7 @@ import (
 
 	crand "crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 
 	"database/sql"
@@ -53,9 +53,9 @@ func connect() error {
 	c := `
 		CREATE TABLE IF NOT EXISTS users (
 			userID INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			username TEXT UNIQUE,
-			pubKey BINARY(214),
-			ip TEXT UNIQUE
+			username TEXT,
+			pubKey BLOB,
+			ip TEXT
 		);
 	`
 	_, err = db.Exec(c)
@@ -68,7 +68,7 @@ func connect() error {
 		CREATE TABLE IF NOT EXISTS tokens (
 			tokenID INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			userID INTEGER,
-			content BINARY(64),
+			content BLOB,
 			assigned TIMESTAMP,
 			FOREIGN KEY (userID) REFERENCES users(userID)
 		);
@@ -106,7 +106,7 @@ func connect() error {
 		error - If there's an error adding the user to the system
 */
 func addUser(username string, publickey *rsa.PublicKey, ip string) error {
-	_, err := db.Exec("INSERT INTO users ($1, $2, $3)",
+	_, err := db.Exec("INSERT INTO users (username, pubKey, ip) VALUES(?, ?, ?)",
 		username, x509.MarshalPKCS1PublicKey(publickey), ip)
 	if err != nil {
 		return err
@@ -147,15 +147,14 @@ func addToken(username string) ([]byte, error) {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	str := string(b)
-	var expire time.Time
 
-	_, err = db.Exec("INSERT INTO tokens ($1, $2, $3)", userID, str, expire)
+	_, err = db.Exec("INSERT INTO tokens (userid, content) VALUES(?, ?)", userID, str)
 	if err != nil {
 		return nil, err
 	}
 	// Encrypts the token
 	encryptedToken, er := rsa.EncryptOAEP(
-		sha256.New(),
+		sha512.New(),
 		crand.Reader,
 		pubKey,
 		[]byte(str),
@@ -181,12 +180,12 @@ func addToken(username string) ([]byte, error) {
 func checkToken(username string, token []byte) (bool, error) {
 	pruneTokens()
 	var userID int
-	err := db.QueryRow("Select userID FROM users WHERE username=?", username).Scan(userID)
+	err := db.QueryRow("Select userID FROM users WHERE username=?", username).Scan(&userID)
 	if err != nil {
 		return false, err
 	}
-	err = db.QueryRow("Select tokenID FROM tokens WHERE userID=? AND content=? AND assigned>?",
-		userID, token, time.Now().Add(-time.Minute*15)).Scan(&token)
+	err = db.QueryRow("Select tokenID FROM tokens WHERE userID=? AND content=?",
+		userID, token).Scan(&token)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			return false, err
@@ -200,7 +199,7 @@ func checkToken(username string, token []byte) (bool, error) {
 A function that continues pruning after parent function finishes
 */
 func pruneTokens() {
-	_, err := db.Exec("DELETE FROM tokens WHERE assigned<?", time.Now().Add(-time.Minute*15))
+	_, err := db.Exec("DELETE FROM tokens WHERE assigned<?", time.Now().Add(-time.Minute*15).Format(time.RFC3339))
 	if err != nil {
 		log.Fatal(err)
 	}

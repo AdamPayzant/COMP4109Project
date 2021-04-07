@@ -1,0 +1,30 @@
+/*##################################*\
+  Utility
+\*##################################*/
+
+body{
+
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  margin: 0px;
+
+  overflow:hidden; 
+  box-sizing: border-box;
+  user-select: none;
+
+}
+
+.centeredText{
+
+    margin: auto auto auto auto; 
+    height: max-content; 
+    width: max-content;
+
+}
+
+.emptyBox{
+
+  background-color: snow; border: black 1px solid;
+
+}
