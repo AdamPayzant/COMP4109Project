@@ -6,6 +6,8 @@ const {sanatizeText, passwordCheckDebug, fragmentStreamlined} = require('./modul
 const {chatHistory} = require('./modules/chatHistoryClass.js')
 const {clientCommunication} = require('./modules/clientCommuniction.js');
 const {networkInformation} = require('./modules/networkInformation.js');
+const grpcLibrary = require('@grpc/grpc-js');
+const protoLoader = require('@grpc/proto-loader');
 
 
 /*##################################*\
@@ -14,9 +16,10 @@ const {networkInformation} = require('./modules/networkInformation.js');
 let userData = null
 let hostConnectionData = null
 let otherUser = null
-let addressBook = null
+let addressBook = []
+let chatHistories = {}
 let UIView = null
-let outbound = null
+let hostConnection = null;
 let chat = null
 
 /*##################################*\
@@ -61,10 +64,12 @@ app.on('activate', () => {
 
 ipcMain.on('chatSent', (event, chatText)=>{
   SendText(chatText)
+  //Send to Host Here
 })
 
 ipcMain.on('deleteMSG', (event, msgID)=>{
-  DeleteMessage(msgID)
+  deleteMessage(msgID)
+  //Send to Host Here
 })
 
 ipcMain.on('loginAttempt',(event, loginData)=>{
@@ -81,7 +86,7 @@ ipcMain.on('loginAttempt',(event, loginData)=>{
       break;
       
   }
-
+  
 })
 
 ipcMain.on('copyMessageText', (event, msgID)=>{
@@ -111,19 +116,29 @@ ipcMain.on('updateUser', (event, name)=>{
   userData.name = name;
 })
 
+ipcMain.on('connectToHost', (event, networkObject)=>{
+
+  hostConnectionData.ip = networkObject.ip
+  hostConnectionData.port = networkObject.port
+  createNewHostConnection(null);
+
+})
+
+
 //Leave
 ipcMain.on('endChat', (event)=>{
   chat = null;
   otherUser = null;
 
   //Disconnect Action Here()
-
   changeView('menu');
 })
 
 ipcMain.on('endHostConnection', (event)=>{
 
   //Disconnect Action Here()
+  dissconnectFromHost();
+  UIView.webContents.send('hostDisconnect');
 
 
 })
@@ -145,9 +160,7 @@ ipcMain.on('renderFrament', (event, fragmentName)=>{
 })
 
 ipcMain.on('provideContactList', (event, searchValue, searchType)=>{
-
   event.returnValue = populateAddressBook(searchValue, searchType);
-
 })
 
 
@@ -240,17 +253,24 @@ function SendText(chatText) {
     
     if(chat != null){
       let msgData = chat.addMSGuser(sanatizeText(chatText.payload), null)
-
       chatHistories[otherUser.identifier] = chat
-
       UIView.webContents.send('inBoundChat', msgData)
     }
-
+    
+    if(hostConnection != null){
+      hostConnection.send({username:userData.name, text:sanatizeText(chatText)});
+    }
+    
 }
-function DeleteMessage(msgID) {
+function deleteMessage(msgID) {
 
-  if(chat != null)
-	  chat.removeMSG(msgID)
+  if(chat != null){
+	  console.log(msgID);
+    chat.removeMSG(msgID)
+    chatHistories[otherUser.identifier] = chat
+  }
+
+  UIView.webContents.send('deleteMessage', msgID);
 
 }
 function RecieveText(text, identifier) {
@@ -276,24 +296,26 @@ function requestChat(id){
   if(id !== -1){
     otherUser = addressBook.filter((value)=>{return value.indentifier == id})[0] || null;
   }
+  //Open Dialog
+  //convoObject = returnOfForm(otherUser)
 
-  /*
 
-    //Open Dialog
-    //convoObject = returnOfForm(otherUser)
+  //Start Connection
+  createNewHostConnection();
 
-    //Start Connection
-    if(false){
-      UIView.webContents.send('userConnection', {status:"failed", issue:"User Not found"})
-      return;
-    }  
-  */
+  if(false){
+    UIView.webContents.send('userConnection', {status:"failed", issue:"User Not found"})
+    return;
+  }  
+
 
   //Load user data
   loadChatData(id);
 
   //Move to other screen
   changeView('chat')
+
+
 
 }
 
@@ -339,21 +361,23 @@ function loadChatData(id){
     chat = new chatHistory(id, tempHist.speakers, tempHist.messages, tempHist.newID)
   } else {
     chat = new chatHistory(id)
-    chatHistories[id] = chat
   }
-
+  chatHistories[id] = chat
 
 }
 
 
 /* Events for Conversations*/
 function InitializeConvo() {
+
 }
 
 function ConfirmConvo() {
+
 }
 
 function GetConversation() {
+
 }
 
 /* Host connection events */
@@ -380,11 +404,13 @@ function getUserIP(){
 
 /* Extra Fucntion related to the others */
 function dissconnectFromHost(){
-
+  if(hostConnection != null){
+    hostConnection.close();
+    hostConnection = null
+  }
 }
 
 function dissconnectFromOtherChat(){
-
 }
 
 function populateAddressBook(searchValue, searchType){
@@ -417,10 +443,11 @@ function populateAddressBook(searchValue, searchType){
 function start(){
 
   userData = {key:"12345678", name:"Bob"}
-  hostConnectionData = new networkInformation("127.0.0.1", "9090", "user")
+  //hostConnectionData = new networkInformation("127.0.0.1", "9090", "user")
   //otherUser = {key:"12345678", name:"Alice", IP:"",status:""}
 
   //Note public keys here are hashes (Just here for debugging)
+  /*
   addressBook = [
     {name:"Alice", indentifier:"5672", publicKey:"64489c85dc2fe0787b85cd87214b3810", ip: "127.0.0.1", port:"9090", status: "Online"},
     {name:"Bob", indentifier:"7036", publicKey:"2fc1c0beb992cd7096975cfebf9d5c3b", ip: "127.0.0.1", port:"9090", status: "Online"},
@@ -438,18 +465,88 @@ function start(){
         {order:2, speaker:-1, messageText:"...", metadata:{}}
       ], speakers: [{speakerID:0, identifier:5672}]
   }}
-
-  outbound = new clientCommunication();
-  //chat = new chatHistory(101013731);
-  outbound.establishConnection(hostConnectionData)
-
-/*
-  const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs;
-  let abcde = new clientConstructor.client(networkAddr, grpcLibrary.credentials.createInsecure())
-  abcde.
   */
+  hostConnectionData = {
+    ip : "localhost",
+    port : "9090"
+  };
+
+  //outbound = new clientCommunication();
+  //chat = new chatHistory(101013731);
+  //outbound.establishConnection(hostConnectionData)
+
 
 }start();
+
+/*##################################*\
+  grpc Functions
+\*##################################*/
+
+function createNewHostConnection(credentials){
+
+  if(hostConnection != null)
+    dissconnectFromHost();
+
+  let networkAddr = "" + hostConnectionData.ip + ":" + hostConnectionData.port || "127.0.0.1:9090";
+
+  const packageDefinition = protoLoader.loadSync('./modules/proto/client.proto', {
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true
+  });
+
+  try {
+
+    /* Found an example of a chat application https://techblog.fexcofts.com/2018/07/20/grpc-nodejs-chat-example/  
+
+    */
+
+    const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs.client;
+    let outbound = new clientConstructor(networkAddr, grpcLibrary.credentials.createInsecure());
+    let hostConnection = outbound.join({user:userData.name, text:JSON.stringify({password:"12345678"})})
+
+    hostConnection.on('data', (data)=>{
+
+      if(data.token != loginStatus){
+        return
+      }
+      /*
+      switch(data.action){
+
+        case 'reciveMessage':
+          RecieveText(data.text, 1)
+          break;
+
+        case 'deleteMessage':
+          deleteMessage(data.text)
+          break;
+
+      }
+
+      */
+    })
+
+    hostConnection.on('status', ()=>{
+    })
+
+    hostConnection.on('error', ()=>{
+      hostConnection = null;
+    })
+
+    hostConnection.on('close', ()=>{
+      dissconnectFromHost();
+    })
+
+    UIView.webContents.send('hostConnect');
+
+  } catch (error) {
+    console.log(error);
+    UIView.webContents.send('loginStatus', -1);
+  }
+
+}
 
 
 

@@ -130,7 +130,6 @@
             }
             function deleteMsg(msgID){
                 if(confirm("Are you sure that you want to delete this message?")){
-                    document.getElementById(`chatMessage${msgID}`).remove()
                     ipcRenderer.send('deleteMSG', msgID)
                 }
             }
@@ -143,6 +142,9 @@
             \*##################################*/
             ipcRenderer.on('inBoundChat', (event, messageText)=>{
                 postToChat(messageText)
+            })
+            ipcRenderer.on('deleteMessage', (event, msgID)=>{
+                document.getElementById(`chatMessage${msgID}`).remove()
             })
             ipcRenderer.on('loginStatus', (event, result)=>{
             })
