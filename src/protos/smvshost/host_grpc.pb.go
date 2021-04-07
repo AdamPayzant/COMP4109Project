@@ -14,6 +14,92 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
+// ClientCAHostClient is the client API for ClientCAHost service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type ClientCAHostClient interface {
+	GetCA(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*CA, error)
+}
+
+type clientCAHostClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewClientCAHostClient(cc grpc.ClientConnInterface) ClientCAHostClient {
+	return &clientCAHostClient{cc}
+}
+
+func (c *clientCAHostClient) GetCA(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*CA, error) {
+	out := new(CA)
+	err := c.cc.Invoke(ctx, "/smvs.clientCAHost/GetCA", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ClientCAHostServer is the server API for ClientCAHost service.
+// All implementations must embed UnimplementedClientCAHostServer
+// for forward compatibility
+type ClientCAHostServer interface {
+	GetCA(context.Context, *Empty) (*CA, error)
+	mustEmbedUnimplementedClientCAHostServer()
+}
+
+// UnimplementedClientCAHostServer must be embedded to have forward compatible implementations.
+type UnimplementedClientCAHostServer struct {
+}
+
+func (UnimplementedClientCAHostServer) GetCA(context.Context, *Empty) (*CA, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCA not implemented")
+}
+func (UnimplementedClientCAHostServer) mustEmbedUnimplementedClientCAHostServer() {}
+
+// UnsafeClientCAHostServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ClientCAHostServer will
+// result in compilation errors.
+type UnsafeClientCAHostServer interface {
+	mustEmbedUnimplementedClientCAHostServer()
+}
+
+func RegisterClientCAHostServer(s grpc.ServiceRegistrar, srv ClientCAHostServer) {
+	s.RegisterService(&ClientCAHost_ServiceDesc, srv)
+}
+
+func _ClientCAHost_GetCA_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCAHostServer).GetCA(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/smvs.clientCAHost/GetCA",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCAHostServer).GetCA(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// ClientCAHost_ServiceDesc is the grpc.ServiceDesc for ClientCAHost service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var ClientCAHost_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "smvs.clientCAHost",
+	HandlerType: (*ClientCAHostServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetCA",
+			Handler:    _ClientCAHost_GetCA_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "smvshost/host.proto",
+}
+
 // ClientHostClient is the client API for ClientHost service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
