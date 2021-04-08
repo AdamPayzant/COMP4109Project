@@ -5,6 +5,20 @@ option go_package = "github.com/AdamPayzant/COMP4109Project/src/protos/smvsclien
 
 service client {
     rpc recieveMessage(ListofMessages) returns (Status);
+
+    rpc join(stream Message) returns (stream Message);
+    rpc send(Message) returns (Message);
+
+    //rpc ReKey(Token) returns (Status); // Requests client's host to change keys
+    //rpc DeleteMessage(DeleteReq) returns (Status);
+
+    //rpc GetConversation(Username) returns (Conversation);
+}
+
+
+message Message { //Information that will be passed between client and service
+    string user = 1;
+    string text = 2;
 }
 
 // As the name describes

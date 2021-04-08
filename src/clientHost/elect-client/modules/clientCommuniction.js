@@ -31,7 +31,7 @@ exports.clientCommunication =  class clientCommunication{
 
         //Create the connection
         const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs;
-        this.connection = new clientConstructor.client(networkAddr, grpcLibrary.credentials.createInsecure())
+        this.connection = new clientConstructor.client(networkAddr, grpcLibrary.credentials.createSsl())
 
         //Section to bind handlers/functions
 

@@ -91,8 +91,8 @@
         function start(){
             populateContactList()
             document.getElementById('area1').innerHTML = ipcRenderer.sendSync('renderFrament','userInfoMenu')
-            //document.getElementById('area2').innerHTML = ipcRenderer.sendSync('renderFrament','hostConnectionForm')
-            document.getElementById('area2').innerHTML = ipcRenderer.sendSync('renderFrament','hostConnectionMenu')
+            document.getElementById('area2').innerHTML = ipcRenderer.sendSync('renderFrament','hostConnectionForm')
+            //document.getElementById('area2').innerHTML = ipcRenderer.sendSync('renderFrament','hostConnectionMenu')
             
 
         }
@@ -124,7 +124,16 @@
             document.getElementById('overlayOuter').style.display = "none";
         }
 
+        function connectToHost(){
 
+            let networkObject = {};
+
+            networkObject.ip = document.getElementById('ipHost').value
+            networkObject.port = document.getElementById('portHost').value
+
+            ipcRenderer.send('connectToHost', networkObject);
+
+        }
         
         function disconnectFromHost(){
             ipcRenderer.send('endHostConnection');
