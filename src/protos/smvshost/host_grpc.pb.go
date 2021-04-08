@@ -14,101 +14,12 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// ClientCAHostClient is the client API for ClientCAHost service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ClientCAHostClient interface {
-	GetCA(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*CA, error)
-}
-
-type clientCAHostClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewClientCAHostClient(cc grpc.ClientConnInterface) ClientCAHostClient {
-	return &clientCAHostClient{cc}
-}
-
-func (c *clientCAHostClient) GetCA(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*CA, error) {
-	out := new(CA)
-	err := c.cc.Invoke(ctx, "/smvs.clientCAHost/GetCA", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// ClientCAHostServer is the server API for ClientCAHost service.
-// All implementations must embed UnimplementedClientCAHostServer
-// for forward compatibility
-type ClientCAHostServer interface {
-	GetCA(context.Context, *Empty) (*CA, error)
-	mustEmbedUnimplementedClientCAHostServer()
-}
-
-// UnimplementedClientCAHostServer must be embedded to have forward compatible implementations.
-type UnimplementedClientCAHostServer struct {
-}
-
-func (UnimplementedClientCAHostServer) GetCA(context.Context, *Empty) (*CA, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetCA not implemented")
-}
-func (UnimplementedClientCAHostServer) mustEmbedUnimplementedClientCAHostServer() {}
-
-// UnsafeClientCAHostServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ClientCAHostServer will
-// result in compilation errors.
-type UnsafeClientCAHostServer interface {
-	mustEmbedUnimplementedClientCAHostServer()
-}
-
-func RegisterClientCAHostServer(s grpc.ServiceRegistrar, srv ClientCAHostServer) {
-	s.RegisterService(&ClientCAHost_ServiceDesc, srv)
-}
-
-func _ClientCAHost_GetCA_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClientCAHostServer).GetCA(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/smvs.clientCAHost/GetCA",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCAHostServer).GetCA(ctx, req.(*Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// ClientCAHost_ServiceDesc is the grpc.ServiceDesc for ClientCAHost service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var ClientCAHost_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "smvs.clientCAHost",
-	HandlerType: (*ClientCAHostServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "GetCA",
-			Handler:    _ClientCAHost_GetCA_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "smvshost/host.proto",
-}
-
 // ClientHostClient is the client API for ClientHost service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ClientHostClient interface {
 	ReKey(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Status, error)
 	DeleteMessage(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*Status, error)
-	// Stuff for a handshake, basically just establishes a secret between users
-	InitializeConvo(ctx context.Context, in *InitMessage, opts ...grpc.CallOption) (*Status, error)
-	ConfirmConvo(ctx context.Context, in *InitMessage, opts ...grpc.CallOption) (*Status, error)
 	// Messaging calls
 	SendText(ctx context.Context, in *ClientText, opts ...grpc.CallOption) (*Status, error)
 	RecieveText(ctx context.Context, in *H2HText, opts ...grpc.CallOption) (*Status, error)
@@ -135,24 +46,6 @@ func (c *clientHostClient) ReKey(ctx context.Context, in *Token, opts ...grpc.Ca
 func (c *clientHostClient) DeleteMessage(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*Status, error) {
 	out := new(Status)
 	err := c.cc.Invoke(ctx, "/smvs.clientHost/DeleteMessage", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clientHostClient) InitializeConvo(ctx context.Context, in *InitMessage, opts ...grpc.CallOption) (*Status, error) {
-	out := new(Status)
-	err := c.cc.Invoke(ctx, "/smvs.clientHost/InitializeConvo", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clientHostClient) ConfirmConvo(ctx context.Context, in *InitMessage, opts ...grpc.CallOption) (*Status, error) {
-	out := new(Status)
-	err := c.cc.Invoke(ctx, "/smvs.clientHost/ConfirmConvo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -192,9 +85,6 @@ func (c *clientHostClient) GetConversation(ctx context.Context, in *Username, op
 type ClientHostServer interface {
 	ReKey(context.Context, *Token) (*Status, error)
 	DeleteMessage(context.Context, *DeleteReq) (*Status, error)
-	// Stuff for a handshake, basically just establishes a secret between users
-	InitializeConvo(context.Context, *InitMessage) (*Status, error)
-	ConfirmConvo(context.Context, *InitMessage) (*Status, error)
 	// Messaging calls
 	SendText(context.Context, *ClientText) (*Status, error)
 	RecieveText(context.Context, *H2HText) (*Status, error)
@@ -211,12 +101,6 @@ func (UnimplementedClientHostServer) ReKey(context.Context, *Token) (*Status, er
 }
 func (UnimplementedClientHostServer) DeleteMessage(context.Context, *DeleteReq) (*Status, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteMessage not implemented")
-}
-func (UnimplementedClientHostServer) InitializeConvo(context.Context, *InitMessage) (*Status, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method InitializeConvo not implemented")
-}
-func (UnimplementedClientHostServer) ConfirmConvo(context.Context, *InitMessage) (*Status, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ConfirmConvo not implemented")
 }
 func (UnimplementedClientHostServer) SendText(context.Context, *ClientText) (*Status, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendText not implemented")
@@ -272,42 +156,6 @@ func _ClientHost_DeleteMessage_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ClientHostServer).DeleteMessage(ctx, req.(*DeleteReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ClientHost_InitializeConvo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InitMessage)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClientHostServer).InitializeConvo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/smvs.clientHost/InitializeConvo",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientHostServer).InitializeConvo(ctx, req.(*InitMessage))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ClientHost_ConfirmConvo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InitMessage)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClientHostServer).ConfirmConvo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/smvs.clientHost/ConfirmConvo",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientHostServer).ConfirmConvo(ctx, req.(*InitMessage))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -380,14 +228,6 @@ var ClientHost_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteMessage",
 			Handler:    _ClientHost_DeleteMessage_Handler,
-		},
-		{
-			MethodName: "InitializeConvo",
-			Handler:    _ClientHost_InitializeConvo_Handler,
-		},
-		{
-			MethodName: "ConfirmConvo",
-			Handler:    _ClientHost_ConfirmConvo_Handler,
 		},
 		{
 			MethodName: "SendText",

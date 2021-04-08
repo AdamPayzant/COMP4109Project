@@ -65,5 +65,5 @@ message Username {
 
 // This will just send the full conversation
 message Conversation {
-    bytes convo = 1;
+    ListofMessages convo = 1;
 }

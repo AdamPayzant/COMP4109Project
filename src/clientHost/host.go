@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -39,6 +40,7 @@ type ClientHostSettings struct {
 	ServerIP         string `json:"serverIP"`
 	Username         string `json:"username"`
 	CentrialServerIP string `json:"centrialServerIP"`
+	TokenPath        string `json:"tokenPath"`
 }
 
 var settings ClientHostSettings
@@ -111,10 +113,11 @@ func getUserInfoFromSever(user string) (bool, error) {
 	}
 	defer conn.Close()
 
-	rsakey, err := x509.ParsePKCS1PublicKey([]byte(ui.PublicKey))
+	PKIXkey, err := x509.ParsePKIXPublicKey([]byte(ui.PublicKey))
 	if err != nil {
 		return false, err
 	}
+	rsakey := PKIXkey.(*rsa.PublicKey)
 
 	e = updateUserInfoDatabase(user, ui.IP, string(ui.PublicKey))
 	if e != nil {
@@ -143,10 +146,12 @@ func loadUserInfo(user string) (bool, error) {
 	if rows.Next() {
 		rows.Scan(&name, &msgCount, &ip, &key)
 		rows.Close()
-		rsakey, err := x509.ParsePKCS1PublicKey([]byte(key))
+
+		PKIXkey, err := x509.ParsePKIXPublicKey([]byte(key))
 		if err != nil {
-			panic(err)
+			return false, err
 		}
+		rsakey := PKIXkey.(*rsa.PublicKey)
 
 		userInfo := &UserInfo{name: name, msgCount: msgCount, ip: ip, key: rsakey}
 		userInfoCache[user] = userInfo
@@ -265,11 +270,9 @@ func verifySecret(user string, secret string) bool {
 	return true
 }
 
-func authenticate(token string) bool {
+func authenticateClientToken(token string) bool {
 	return true
 }
-
-// ####################################################################################################################
 
 func getTimeStamp() (int, string, int, int, int, int) {
 	loc, _ := time.LoadLocation("UTC")
@@ -282,6 +285,8 @@ func getTimeStamp() (int, string, int, int, int, int) {
 
 	return now.Year(), now.Month().String(), now.Day(), hour, minute, second
 }
+
+// ####################################################################################################################
 
 func (h *host) ReKey(ctx context.Context, req *pb_host.Token) (*pb_host.Status, error) {
 	/*
@@ -306,9 +311,10 @@ func (h *host) ReKey(ctx context.Context, req *pb_host.Token) (*pb_host.Status, 
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+	keyBytes, _ := x509.MarshalPKIXPublicKey(&newkey.PublicKey)
 	r, err := server.UpdateKey(ctx, &pb_server.KeyUpdate{Username: username,
 		AuthKey: authToken,
-		NewKey:  x509.MarshalPKCS1PublicKey(&newkey.PublicKey)})
+		NewKey:  keyBytes})
 	if err != nil {
 		return &pb_host.Status{Status: 2}, err
 	}
@@ -316,7 +322,7 @@ func (h *host) ReKey(ctx context.Context, req *pb_host.Token) (*pb_host.Status, 
 }
 
 func (h *host) DeleteMessage(ctx context.Context, req *pb_host.DeleteReq) (*pb_host.Status, error) {
-	if authenticate(req.Token) {
+	if authenticateClientToken(req.Token) {
 		_, e := db.Exec("DELETE FROM conversations WHERE user='" + req.User + "' AND id='" + string(req.MessageID) + "'")
 		if e != nil {
 			return &pb_host.Status{Status: 2}, e
@@ -327,7 +333,7 @@ func (h *host) DeleteMessage(ctx context.Context, req *pb_host.DeleteReq) (*pb_h
 }
 
 func (h *host) SendText(ctx context.Context, req *pb_host.ClientText) (*pb_host.Status, error) {
-	if req.TargetUser != username && authenticate(req.Token) {
+	if req.TargetUser != username && authenticateClientToken(req.Token) {
 		secret := generateSecret(req.TargetUser)
 		connection, conn, e := connectToUser(req.TargetUser)
 		if e != nil {
@@ -423,7 +429,56 @@ func (h *host) RecieveText(ctx context.Context, req *pb_host.H2HText) (*pb_host.
 }
 
 func (h *host) GetConversation(ctx context.Context, req *pb_host.Username) (*pb_host.Conversation, error) {
-	return nil, nil
+	if authenticateClientToken(req.Token) {
+
+		type Message struct {
+			Order       int    `json:"order"`
+			Speaker     bool   `json:"speeker"`
+			MessageText string `json:"messageText"`
+		}
+
+		type Convo struct {
+			Messages []Message `json:"messages"`
+		}
+
+		var convo []Message
+		msgIndex := 0
+		msgCount := -1
+		rows, _ := db.Query("SELECT COUNT(*) AS msgCount, id, sender, msg  FROM conversations WHERE user='" + req.Username + "'")
+		if rows.Next() {
+			var id int
+			var sender bool
+			var msg string
+			if msgCount < 0 {
+				rows.Scan(&msgCount, &id, &sender, &msg)
+				convo = make([]Message, msgCount)
+				convo[msgIndex] = Message{Order: id, Speaker: sender, MessageText: msg}
+			} else {
+				rows.Scan(&msgCount, &id, &sender, &msg)
+				convo[msgIndex] = Message{Order: id, Speaker: sender, MessageText: msg}
+			}
+		}
+		rows.Close()
+
+		convoJsonBytes, _ := json.Marshal(&Convo{Messages: convo})
+		convoJson := string(convoJsonBytes)
+
+		chunckSize := 255
+		lastIndex := 0
+		convoJsonLeng := len(convoJson)
+		segmentCount := int(math.Ceil(float64(convoJsonLeng) / float64(chunckSize)))
+		convoJsonSegments := make([]string, segmentCount)
+		i := 0
+		for lastIndex < convoJsonLeng {
+			nextIndex := int(math.Min(float64(convoJsonLeng), float64(lastIndex+chunckSize)))
+			convoJsonSegments[i] = convoJson[lastIndex:nextIndex]
+			lastIndex = nextIndex
+			i = i + 1
+		}
+		return &pb_host.Conversation{Convo: &pb_host.ListofMessages{Messages: convoJsonSegments}}, nil
+	} else {
+		return nil, nil
+	}
 }
 
 // ####################################################################################################################
@@ -512,6 +567,80 @@ func loadSettings(file string) {
 	}
 }
 
+func decryptToken(token []byte) ([]byte, error) {
+	// todo
+	return token, nil
+}
+
+func getTokenFromServer() ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	pd_server_token, e := server.GetToken(ctx, &pb_server.Username{Username: settings.Username})
+	if e != nil {
+		log.Printf("Failed to retrieve token: %v", e)
+		return nil, e
+	}
+
+	token, _ := decryptToken(pd_server_token.AuthKey)
+	return token, nil
+}
+
+func registerOrUpdateUserIfNeeded() {
+	server, conn, e := connectToCentralSever()
+	if e != nil {
+		log.Printf("Could verify if user needs to be registered: %v", e)
+	} else {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		pb_server_userInfo, err := server.GetUser(ctx, &pb_server.Username{Username: settings.Username})
+		if err != nil {
+			log.Printf("Failed to retrieve UserInfo: %v", err)
+		}
+		defer conn.Close()
+
+		if pb_server_userInfo == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			keyBytes, _ := x509.MarshalPKIXPublicKey(clientPublicKey)
+			status, er := server.Register(ctx, &pb_server.UserReg{Username: settings.Username, Key: keyBytes, Ip: settings.ServerIP})
+			if er != nil {
+				log.Printf("Failed to register User: %v", er)
+			}
+
+			if status.Status != 0 {
+				log.Printf("Failed to register User: return state: %s", status)
+			}
+		} else {
+			token, _ := getTokenFromServer()
+			PKIXkey, _ := x509.ParsePKIXPublicKey(pb_server_userInfo.PublicKey)
+			key := PKIXkey.(*rsa.PublicKey)
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			clientPublicKeyBytes, _ := x509.MarshalPKIXPublicKey(clientPublicKey)
+			if key == nil || !bytes.Equal(pb_server_userInfo.PublicKey, clientPublicKeyBytes) {
+				newKey, _ := x509.MarshalPKIXPublicKey(clientPublicKey)
+				key_status, key_e := server.UpdateKey(ctx, &pb_server.KeyUpdate{Username: username,
+					AuthKey: token,
+					NewKey:  newKey})
+				if key_e != nil {
+					log.Printf("Failed to update Key: return state: %s", key_status)
+				}
+			}
+
+			if pb_server_userInfo.IP != settings.ServerIP {
+				ip_status, ip_e := server.UpdateIP(ctx, &pb_server.IPupdate{Username: username,
+					AuthKey: token,
+					NewIP:   settings.ServerIP})
+				if ip_e != nil {
+					log.Printf("Failed to update IP: return state: %s", ip_status)
+				}
+			}
+		}
+	}
+}
+
 func main() {
 	settingsPath := os.Args[1]
 	userInfoCache = make(map[string]*UserInfo)
@@ -519,6 +648,7 @@ func main() {
 	loadSettings(settingsPath)
 	clientPublicKey = tryLoadClientPublicKey(settings.PublicKeyPath)
 	clientPrivateKey = tryLoadClientPrivateKey(settings.PrivateKeyPath)
+	// registerOrUpdateUserIfNeeded()
 	initDB(settings.DataBasePath)
 
 	updateUserInfoDatabase("Tester", ":8080", string(x509.MarshalPKCS1PublicKey(clientPublicKey)))
