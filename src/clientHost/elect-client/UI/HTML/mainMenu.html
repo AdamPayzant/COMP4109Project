@@ -116,7 +116,11 @@
         }
 
         function makeChatRequest(){
+
+            let id = document.getElementById('user').value
+            ipcRenderer.send('requestChatUName', id);
             hideConnectionArea();
+            
         }
 
         function hideConnectionArea(){
