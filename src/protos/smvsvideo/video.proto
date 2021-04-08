@@ -1,0 +1,17 @@
+syntax="proto3";
+package smvs;
+
+option go_package = "github.com/AdamPayzant/COMP4109Project/src/protos/smvsvideo";
+
+service Video {
+    rpc SendVideo (Vid) returns (None);
+}
+
+message None {
+
+}
+
+message Vid {
+    bytes image = 1;
+    bytes audio = 2;
+}

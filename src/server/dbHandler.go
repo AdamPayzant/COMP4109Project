@@ -14,6 +14,7 @@ import (
 	"database/sql"
 
 	_ "github.com/go-sql-driver/mysql"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var db *sql.DB = nil
@@ -147,8 +148,11 @@ func addToken(username string) ([]byte, error) {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	str := string(b)
-
-	_, err = db.Exec("INSERT INTO tokens (userid, content) VALUES(?, ?)", userID, str)
+	salt, err := bcrypt.GenerateFromPassword([]byte(str), bcrypt.MinCost)
+	if err != nil {
+		return nil, err
+	}
+	_, err = db.Exec("INSERT INTO tokens (userid, content) VALUES(?, ?)", userID, salt)
 	if err != nil {
 		return nil, err
 	}
@@ -184,15 +188,23 @@ func checkToken(username string, token []byte) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	err = db.QueryRow("Select tokenID FROM tokens WHERE userID=? AND content=?",
-		userID, token).Scan(&token)
+	rows, err := db.Query("Select content FROM tokens WHERE userID=?", userID)
 	if err != nil {
-		if err != sql.ErrNoRows {
+		return false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var content []byte
+		err = rows.Scan(&content)
+		if err != nil {
 			return false, err
 		}
-		return false, nil
+		err = bcrypt.CompareHashAndPassword(content, token)
+		if err == nil {
+			return true, nil
+		}
 	}
-	return true, nil
+	return false, nil
 }
 
 /*
