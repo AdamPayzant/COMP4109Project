@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	pb_host "pb_host"
 
-	// pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
+	// pb_host "pb_host"
+
+	pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
