@@ -19,7 +19,7 @@ The server has only been validated in Linux, though it is likely compatible with
 The server can be either built from source or run from a precompiled binary.
 If using the default settings, a Mariadb server must be running locally on port 3306. 
 This DB must have a user named smvs with the password "password" and have a database named "smvsServer".
-Additionally port 50051 must be free for the server to use.
+Additionally port 9090 must be free for the server to use.
 Once all of this setup is complete, the server is ready.
 
 ### Client Host
