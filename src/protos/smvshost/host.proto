@@ -7,9 +7,6 @@ service clientHost {
     rpc ReKey(Token) returns (Status); // Requests client's host to change keys
     rpc DeleteMessage(DeleteReq) returns (Status);
 
-    // Stuff for a handshake, basically just establishes a secret between users
-    rpc InitializeConvo(InitMessage) returns (Status);
-    rpc ConfirmConvo(InitMessage) returns (Status);
     // Messaging calls
     rpc SendText(ClientText) returns (Status);
     rpc RecieveText(H2HText) returns (Status);

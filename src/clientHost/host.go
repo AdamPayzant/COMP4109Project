@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"time"
 
-	// pb_host "pb_host"
 	pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
 	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
 
@@ -37,17 +36,6 @@ var hostPrivateKey *rsa.PrivateKey
 
 var testingPort string
 
-type UserInfo struct {
-	name       string
-	msgCount   int
-	ip         string
-	key        *rsa.PublicKey
-	connection *pb_host.ClientHostClient
-	conn       *grpc.ClientConn
-}
-
-var userInfoCache map[string]*UserInfo
-
 var server pb_server.ServerClient = nil
 var port = ":9090"
 
@@ -60,39 +48,14 @@ type host struct {
 	pb_host.UnimplementedClientHostServer
 }
 
-func RSA_OAEP_Encrypt(secretMessage string, key rsa.PublicKey) string {
-	label := []byte("OAEP Encrypted")
-	rng := rand.Reader
-	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rng, &key, []byte(secretMessage), label)
-	if err != nil {
-		log.Fatalf("Failed to EncryptOAEP: %v", err)
-	}
-	return base64.StdEncoding.EncodeToString(ciphertext)
+type UserInfo struct {
+	name     string
+	msgCount int
+	ip       string
+	key      *rsa.PublicKey
 }
 
-func RSA_OAEP_Decrypt(cipherText string, privKey rsa.PrivateKey) string {
-	ct, _ := base64.StdEncoding.DecodeString(cipherText)
-	label := []byte("OAEP Encrypted")
-	rng := rand.Reader
-	plaintext, err := rsa.DecryptOAEP(sha256.New(), rng, &privKey, ct, label)
-	if err != nil {
-		log.Fatalf("Failed to DecryptOAEP: %v", err)
-	}
-	// fmt.Println("Plaintext:", string(plaintext))
-	return string(plaintext)
-}
-
-func genSecret(user string) string {
-	return "asdasdsad"
-}
-
-func verifySecret(user string, secret string) bool {
-	return true
-}
-
-func auth(token string) bool {
-	return true
-}
+var userInfoCache map[string]*UserInfo
 
 func updateUserInfoDatabase(user string, ip string, publicKey string) error {
 	msgCount := 0
@@ -105,7 +68,7 @@ func updateUserInfoDatabase(user string, ip string, publicKey string) error {
 
 	statement, e := db.Prepare("INSERT INTO userInfo (user, msgCount, ip, key) VALUES (?, ?, ?, ?)")
 	if e != nil {
-		log.Fatalln(e)
+		return e
 	}
 	_, er := statement.Exec(user, msgCount, ip, publicKey)
 	if er != nil {
@@ -174,9 +137,7 @@ func getIp(user string) (string, error) {
 	var ip string
 	if userInfoCache[user] == nil {
 		hasLoad, e := loadUserInfo(user)
-		if hasLoad {
-			ip = userInfoCache[user].ip
-		} else {
+		if !hasLoad {
 			return "", e
 		}
 	}
@@ -184,27 +145,102 @@ func getIp(user string) (string, error) {
 	return ip, nil
 }
 
-func connectToUser(user string) (*pb_host.ClientHostClient, error) {
+func getKey(user string) (*rsa.PublicKey, error) {
+	var key *rsa.PublicKey
 	if userInfoCache[user] == nil {
-		ip, e := getIp(user)
-		if e != nil {
+		hasLoad, e := loadUserInfo(user)
+		if !hasLoad {
 			return nil, e
 		}
+	}
+	key = userInfoCache[user].key
+	return key, nil
+}
 
-		config := &tls.Config{
-			InsecureSkipVerify: true,
-		}
-		conn, err := grpc.Dial(ip, grpc.WithTransportCredentials(credentials.NewTLS(config)))
-		if err != nil {
-			log.Fatalf("Did not connect: %v", err)
-		}
-		connection := pb_host.NewClientHostClient(conn)
-		userInfoCache[user].conn = conn
-		userInfoCache[user].connection = &connection
+func connectToUser(user string) (pb_host.ClientHostClient, *grpc.ClientConn, error) {
+	ip, e := getIp(user)
+	if e != nil {
+		return nil, nil, e
 	}
 
-	return userInfoCache[user].connection, nil
+	config := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	conn, err := grpc.Dial(ip, grpc.WithTransportCredentials(credentials.NewTLS(config)))
+	if err != nil {
+		return nil, nil, err
+	}
+	connection := pb_host.NewClientHostClient(conn)
+
+	return connection, conn, nil
 }
+
+func RSA_OAEP_Encrypt(secretMessage string, key rsa.PublicKey) (string, error) {
+	label := []byte("OAEP Encrypted")
+	rng := rand.Reader
+	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rng, &key, []byte(secretMessage), label)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+func RSA_OAEP_Decrypt(cipherText string, privKey rsa.PrivateKey) (string, error) {
+	ct, _ := base64.StdEncoding.DecodeString(cipherText)
+	label := []byte("OAEP Encrypted")
+	rng := rand.Reader
+	plaintext, err := rsa.DecryptOAEP(sha256.New(), rng, &privKey, ct, label)
+	if err != nil {
+		return "", err
+	}
+	// fmt.Println("Plaintext:", string(plaintext))
+	return string(plaintext), nil
+}
+
+func encryptForClient(msg string) (string, error) {
+	cypherText, err := RSA_OAEP_Encrypt(msg, *clientPublicKey)
+	if err != nil {
+		return "", err
+	}
+
+	return cypherText, nil
+}
+
+func encryptForSending(msg string, user string) (string, error) {
+	key, e := getKey(user)
+	if e != nil {
+		return "", e
+	}
+
+	cypherText, err := RSA_OAEP_Encrypt(msg, *key)
+	if err != nil {
+		return "", err
+	}
+
+	return cypherText, nil
+}
+
+func decryptReceived(msg string) (string, error) {
+	plainText, err := RSA_OAEP_Decrypt(msg, *hostPrivateKey)
+	if err != nil {
+		return "", err
+	}
+	return plainText, nil
+}
+
+func generateSecret(user string) string {
+	return "asdasdsad"
+}
+
+func verifySecret(user string, secret string) bool {
+	return true
+}
+
+func authenticate(token string) bool {
+	return true
+}
+
+// ####################################################################################################################
 
 func getTimeStamp() (int, string, int, int, int, int) {
 	loc, _ := time.LoadLocation("UTC")
@@ -217,16 +253,6 @@ func getTimeStamp() (int, string, int, int, int, int) {
 
 	return now.Year(), now.Month().String(), now.Day(), hour, minute, second
 }
-
-/*
-	Message pipe line
-		Text
-			Sending: plain text -> RSA -> TLS/SSL (gRPC)
-			Receving: TLS/SSL (gRPC) -> RSA -> plain text
-		Video
-			Sending: stream -> TLS/SSL (gRPC)
-			Receving: TLS/SSL (gRPC) -> steam
-*/
 
 func (h *host) ReKey(ctx context.Context, req *pb_host.Token) (*pb_host.Status, error) {
 	/*
@@ -261,7 +287,7 @@ func (h *host) ReKey(ctx context.Context, req *pb_host.Token) (*pb_host.Status, 
 }
 
 func (h *host) DeleteMessage(ctx context.Context, req *pb_host.DeleteReq) (*pb_host.Status, error) {
-	if auth(req.Token) {
+	if authenticate(req.Token) {
 		_, e := db.Exec("DELETE FROM conversations WHERE user='" + req.User + "' AND id='" + string(req.MessageID) + "'")
 		if e != nil {
 			return &pb_host.Status{Status: 2}, e
@@ -271,33 +297,31 @@ func (h *host) DeleteMessage(ctx context.Context, req *pb_host.DeleteReq) (*pb_h
 	return &pb_host.Status{Status: 0}, nil
 }
 
-func (h *host) InitializeConvo(ctx context.Context, req *pb_host.InitMessage) (*pb_host.Status, error) {
-	fmt.Println("Test")
-	return &pb_host.Status{Status: 0}, nil
-}
-
-func (h *host) ConfirmConvo(ctx context.Context, req *pb_host.InitMessage) (*pb_host.Status, error) {
-	return nil, nil
-}
-
 func (h *host) SendText(ctx context.Context, req *pb_host.ClientText) (*pb_host.Status, error) {
-	if req.TargetUser != username && auth(req.Token) {
-		secret := genSecret(req.TargetUser)
-		connection, e := connectToUser(req.TargetUser)
+	if req.TargetUser != username && authenticate(req.Token) {
+		secret := generateSecret(req.TargetUser)
+		connection, conn, e := connectToUser(req.TargetUser)
 		if e != nil {
+			log.Println(e)
 			return &pb_host.Status{Status: 1}, e
 		}
 
 		sendMSGs := make([]string, len(req.Message.Messages))
 		for i, msg := range req.Message.Messages {
 			fmt.Println(msg)
-			sendMSGs[i] = RSA_OAEP_Encrypt(msg, *userInfoCache[req.TargetUser].key)
+			var err error
+			sendMSGs[i], err = encryptForSending(msg, req.TargetUser)
+			if err != nil {
+				log.Println(err)
+				return &pb_host.Status{Status: 1}, nil
+			}
 		}
 
-		startus, err := (*connection).RecieveText(context.Background(), &pb_host.H2HText{Message: &pb_host.ListofMessages{Messages: sendMSGs}, User: req.TargetUser, Secret: secret})
+		startus, err := connection.RecieveText(context.Background(), &pb_host.H2HText{Message: &pb_host.ListofMessages{Messages: sendMSGs}, User: req.TargetUser, Secret: secret})
 		if err != nil {
 			return startus, err
 		}
+		defer conn.Close()
 
 		year, month, day, hour, minute, second := getTimeStamp()
 		id := userInfoCache[req.TargetUser].msgCount
@@ -305,7 +329,12 @@ func (h *host) SendText(ctx context.Context, req *pb_host.ClientText) (*pb_host.
 		statement, e := db.Prepare("INSERT INTO conversations (user, id, sender, year, month, day, hour, minute, second, msg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		for _, msg := range req.Message.Messages {
 			if encryptMSG {
-				msg = RSA_OAEP_Encrypt(msg, *clientPublicKey)
+				var err error
+				msg, err = encryptForClient(msg)
+				if err != nil {
+					log.Println(err)
+					return &pb_host.Status{Status: 1}, nil
+				}
 			}
 			id = id + 1
 			statement.Exec(req.TargetUser, id, true, year, month, day, hour, minute, second, msg)
@@ -330,10 +359,21 @@ func (h *host) RecieveText(ctx context.Context, req *pb_host.H2HText) (*pb_host.
 
 		statement, _ := db.Prepare("INSERT INTO conversations (user, id, sender, year, month, day, hour, minute, second, msg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		for _, msg := range req.Message.Messages {
-			msg = RSA_OAEP_Decrypt(msg, *hostPrivateKey)
+			var err error
+			msg, err = decryptReceived(msg)
+			if err != nil {
+				log.Println(err)
+				return &pb_host.Status{Status: 1}, nil
+			}
+
 			fmt.Println(msg)
 			if encryptMSG {
-				msg = RSA_OAEP_Encrypt(msg, *clientPublicKey)
+				var err error
+				msg, err = encryptForClient(msg)
+				if err != nil {
+					log.Println(err)
+					return &pb_host.Status{Status: 1}, nil
+				}
 			}
 
 			id = id + 1
@@ -354,11 +394,13 @@ func (h *host) GetConversation(ctx context.Context, req *pb_host.Username) (*pb_
 	return nil, nil
 }
 
+// ####################################################################################################################
+
 func initDB(file string) {
 	var err error
 	db, err = sql.Open("sqlite3", file)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatalln(err)
 	}
 
 	db.Exec("create table if not exists conversations (user text not null, id integer not null, sender boolean not null, year integer, month text, day integer, hour integer, minute integer, second integer, msg text not null, PRIMARY key(user, id))")
@@ -410,15 +452,14 @@ func tryLoadClientPublicKey() {
 		raw, _ := ioutil.ReadFile(file)
 		block, _ := pem.Decode([]byte(raw))
 		if block == nil {
-			fmt.Println("unable to decode publicKey to request")
+			log.Fatalln("unable to decode publicKey to request")
 		}
 		key, e := x509.ParsePKIXPublicKey(block.Bytes)
 		if e != nil {
-			log.Fatalf("%v", e)
+			log.Fatalln(e)
 		}
 
 		clientPublicKey = key.(*rsa.PublicKey)
-		encryptMSG = true
 	}
 }
 
@@ -430,16 +471,16 @@ func tryLoadHostPrivateKey() {
 		raw, _ := ioutil.ReadFile(file)
 		block, _ := pem.Decode([]byte(raw))
 		if block == nil {
-			fmt.Println("unable to decode publicKey to request")
+			log.Fatalln("unable to decode publicKey to request")
 		}
 		key, e := x509.ParsePKCS1PrivateKey(block.Bytes)
 		if e != nil {
-			log.Fatalf("%v", e)
+			log.Fatalln(e)
 		}
 
 		hostPrivateKey = key
 	} else {
-		log.Fatalf("%v", err)
+		log.Fatalln(err)
 	}
 }
 
@@ -447,7 +488,7 @@ func main() {
 	dbfile := "./data.db"
 	testingPort = os.Args[1]
 	dbfile = os.Args[2]
-	encryptMSG = false
+	encryptMSG = true
 	userInfoCache = make(map[string]*UserInfo)
 
 	tryLoadClientPublicKey()
@@ -461,8 +502,5 @@ func main() {
 
 	startClientHost()
 
-	for _, user := range userInfoCache {
-		(*(user.conn)).Close()
-	}
 	db.Close()
 }
