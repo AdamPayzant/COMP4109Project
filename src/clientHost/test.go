@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
+	"fmt"
 	"log"
 	pb_host "pb_host"
 
@@ -38,11 +40,18 @@ type host struct {
 	pb_host.UnimplementedClientHostServer
 }
 
-type cahost struct {
-	pb_host.UnimplementedClientCAHostServer
-}
-
 func main() {
+
+	type Message struct {
+		Order       int    `json:"order"`
+		Speaker     bool   `json:"speeker"`
+		MessageText string `json:"messageText"`
+	}
+
+	type Convo struct {
+		Messages []Message `json:"messages"`
+	}
+
 	config := &tls.Config{
 		InsecureSkipVerify: true,
 	}
@@ -59,6 +68,23 @@ func main() {
 		log.Fatalf("Error when calling SendText: %s", err)
 	}
 	log.Printf("Response from server: %s", response.Status)
+
+	res, er := server.GetConversation(context.Background(), &pb_host.Username{Username: "Tester1", Token: "TEst"})
+	if er != nil {
+		log.Fatalf("Error when calling GetConversation: %s", er)
+	}
+
+	var convo Convo
+	var wholeMSG string
+	for _, msg := range res.Convo.Messages {
+		wholeMSG = wholeMSG + msg
+	}
+	fmt.Println(wholeMSG)
+	json.Unmarshal([]byte(wholeMSG), &convo)
+
+	for _, m := range convo.Messages {
+		fmt.Println(m.MessageText)
+	}
 
 	// ca, err := server.GetCA(context.Background(), &pb_host.Empty{})
 	// fmt.Println(ca)

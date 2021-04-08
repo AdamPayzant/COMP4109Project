@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math"
@@ -21,7 +20,8 @@ import (
 	"strconv"
 	"time"
 
-	pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
+	pb_host "pb_host"
+	// pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
 	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
 
 	"google.golang.org/grpc"
@@ -207,21 +207,21 @@ func connectToUser(user string) (pb_host.ClientHostClient, *grpc.ClientConn, err
 	return connection, conn, nil
 }
 
-func RSA_OAEP_Encrypt(secretMessage string, key rsa.PublicKey) (string, error) {
+func RSA_OAEP_Encrypt(secretMessage string, key *rsa.PublicKey) (string, error) {
 	label := []byte("OAEP Encrypted")
 	rng := rand.Reader
-	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rng, &key, []byte(secretMessage), label)
+	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rng, key, []byte(secretMessage), label)
 	if err != nil {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
-func RSA_OAEP_Decrypt(cipherText string, privKey rsa.PrivateKey) (string, error) {
+func RSA_OAEP_Decrypt(cipherText string, privKey *rsa.PrivateKey) (string, error) {
 	ct, _ := base64.StdEncoding.DecodeString(cipherText)
 	label := []byte("OAEP Encrypted")
 	rng := rand.Reader
-	plaintext, err := rsa.DecryptOAEP(sha256.New(), rng, &privKey, ct, label)
+	plaintext, err := rsa.DecryptOAEP(sha256.New(), rng, privKey, ct, label)
 	if err != nil {
 		return "", err
 	}
@@ -230,7 +230,7 @@ func RSA_OAEP_Decrypt(cipherText string, privKey rsa.PrivateKey) (string, error)
 }
 
 func encryptForClient(msg string) (string, error) {
-	cypherText, err := RSA_OAEP_Encrypt(msg, *clientPublicKey)
+	cypherText, err := RSA_OAEP_Encrypt(msg, clientPublicKey)
 	if err != nil {
 		return "", err
 	}
@@ -244,7 +244,7 @@ func encryptForSending(msg string, user string) (string, error) {
 		return "", e
 	}
 
-	cypherText, err := RSA_OAEP_Encrypt(msg, *key)
+	cypherText, err := RSA_OAEP_Encrypt(msg, key)
 	if err != nil {
 		return "", err
 	}
@@ -253,7 +253,7 @@ func encryptForSending(msg string, user string) (string, error) {
 }
 
 func decryptForClient(msg string) (string, error) {
-	text, err := RSA_OAEP_Decrypt(msg, *clientPrivateKey)
+	text, err := RSA_OAEP_Decrypt(msg, clientPrivateKey)
 	if err != nil {
 		return "", err
 	}
@@ -346,10 +346,7 @@ func (h *host) SendText(ctx context.Context, req *pb_host.ClientText) (*pb_host.
 			wholeMsg = wholeMsg + msg
 		}
 
-		fmt.Println(wholeMsg)
-
-		var err error
-		wholeMsg, err = encryptForSending(wholeMsg, req.TargetUser)
+		wholeMsgEncrypted, err := encryptForSending(wholeMsg, req.TargetUser)
 		if err != nil {
 			log.Println(err)
 			return &pb_host.Status{Status: 1}, nil
@@ -357,13 +354,13 @@ func (h *host) SendText(ctx context.Context, req *pb_host.ClientText) (*pb_host.
 
 		chunckSize := 255
 		lastIndex := 0
-		msgLeng := len(wholeMsg)
+		msgLeng := len(wholeMsgEncrypted)
 		segmentCount := int(math.Ceil(float64(msgLeng) / float64(chunckSize)))
 		msgSegments := make([]string, segmentCount)
 		i := 0
 		for lastIndex < msgLeng {
 			nextIndex := int(math.Min(float64(msgLeng), float64(lastIndex+chunckSize)))
-			msgSegments[i] = wholeMsg[lastIndex:nextIndex]
+			msgSegments[i] = wholeMsgEncrypted[lastIndex:nextIndex]
 			lastIndex = nextIndex
 			i = i + 1
 		}
@@ -378,16 +375,14 @@ func (h *host) SendText(ctx context.Context, req *pb_host.ClientText) (*pb_host.
 		id := userInfoCache[req.TargetUser].msgCount
 
 		statement, e := db.Prepare("INSERT INTO conversations (user, id, sender, year, month, day, hour, minute, second, msg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		for _, msg := range req.Message.Messages {
-			var err error
-			msg, err = encryptForClient(msg)
-			if err != nil {
-				log.Println(err)
-				return &pb_host.Status{Status: 1}, nil
-			}
-			id = id + 1
-			statement.Exec(req.TargetUser, id, true, year, month, day, hour, minute, second, msg)
+		wholeMsgClientEncrypted, errr := encryptForClient(wholeMsg)
+		if errr != nil {
+			log.Println(err)
+			return &pb_host.Status{Status: 1}, nil
 		}
+
+		id = id + 1
+		statement.Exec(req.TargetUser, id, true, year, month, day, hour, minute, second, wholeMsgClientEncrypted)
 		db.Exec("UPDATE userInfo SET msgCount=" + strconv.Itoa(id) + " WHERE user='" + req.TargetUser + "'")
 		return &pb_host.Status{Status: 0}, nil
 	} else {
@@ -411,8 +406,6 @@ func (h *host) RecieveText(ctx context.Context, req *pb_host.H2HText) (*pb_host.
 		for _, msg := range req.Message.Messages {
 			wholeMsg = wholeMsg + msg
 		}
-
-		fmt.Println(wholeMsg)
 
 		id = id + 1
 		_, e := statement.Exec(req.User, id, false, year, month, day, hour, minute, second, wholeMsg)
@@ -441,41 +434,59 @@ func (h *host) GetConversation(ctx context.Context, req *pb_host.Username) (*pb_
 			Messages []Message `json:"messages"`
 		}
 
-		var convo []Message
-		msgIndex := 0
-		msgCount := -1
-		rows, _ := db.Query("SELECT COUNT(*) AS msgCount, id, sender, msg  FROM conversations WHERE user='" + req.Username + "'")
-		if rows.Next() {
-			var id int
-			var sender bool
-			var msg string
-			if msgCount < 0 {
-				rows.Scan(&msgCount, &id, &sender, &msg)
-				convo = make([]Message, msgCount)
-				convo[msgIndex] = Message{Order: id, Speaker: sender, MessageText: msg}
-			} else {
-				rows.Scan(&msgCount, &id, &sender, &msg)
-				convo[msgIndex] = Message{Order: id, Speaker: sender, MessageText: msg}
+		var response *pb_host.Conversation
+
+		rowCount, _ := db.Query("SELECT COUNT(*) AS msgCount FROM conversations WHERE user='" + req.Username + "'")
+		if rowCount.Next() {
+			var convo []Message
+			var msgCount int
+
+			rowCount.Scan(&msgCount)
+			rowCount.Close()
+
+			convo = make([]Message, msgCount)
+
+			msgIndex := 0
+			rows, _ := db.Query("SELECT id, sender, msg  FROM conversations WHERE user='" + req.Username + "'")
+			for rows.Next() {
+				var id int
+				var sender bool
+				var msg string
+				rows.Scan(&id, &sender, &msg)
+				decryptedMSG, err := decryptForClient(msg)
+				if err != nil {
+					log.Println(err)
+				}
+				convo[msgIndex].Order = id
+				convo[msgIndex].Speaker = sender
+				convo[msgIndex].MessageText = decryptedMSG
+				msgIndex = msgIndex + 1
 			}
-		}
-		rows.Close()
+			rows.Close()
 
-		convoJsonBytes, _ := json.Marshal(&Convo{Messages: convo})
-		convoJson := string(convoJsonBytes)
+			convoJsonBytes, _ := json.Marshal(&Convo{Messages: convo})
+			convoJson := string(convoJsonBytes)
 
-		chunckSize := 255
-		lastIndex := 0
-		convoJsonLeng := len(convoJson)
-		segmentCount := int(math.Ceil(float64(convoJsonLeng) / float64(chunckSize)))
-		convoJsonSegments := make([]string, segmentCount)
-		i := 0
-		for lastIndex < convoJsonLeng {
-			nextIndex := int(math.Min(float64(convoJsonLeng), float64(lastIndex+chunckSize)))
-			convoJsonSegments[i] = convoJson[lastIndex:nextIndex]
-			lastIndex = nextIndex
-			i = i + 1
+			chunckSize := 255
+			lastIndex := 0
+			convoJsonLeng := len(convoJson)
+			segmentCount := int(math.Ceil(float64(convoJsonLeng) / float64(chunckSize)))
+			convoJsonSegments := make([]string, segmentCount)
+			i := 0
+			for lastIndex < convoJsonLeng {
+				nextIndex := int(math.Min(float64(convoJsonLeng), float64(lastIndex+chunckSize)))
+				convoJsonSegments[i] = convoJson[lastIndex:nextIndex]
+				lastIndex = nextIndex
+				i = i + 1
+			}
+
+			response = &pb_host.Conversation{Convo: &pb_host.ListofMessages{Messages: convoJsonSegments}}
+		} else {
+			response = nil
+			rowCount.Close()
 		}
-		return &pb_host.Conversation{Convo: &pb_host.ListofMessages{Messages: convoJsonSegments}}, nil
+
+		return response, nil
 	} else {
 		return nil, nil
 	}
@@ -651,8 +662,9 @@ func main() {
 	// registerOrUpdateUserIfNeeded()
 	initDB(settings.DataBasePath)
 
-	updateUserInfoDatabase("Tester", ":8080", string(x509.MarshalPKCS1PublicKey(clientPublicKey)))
-	updateUserInfoDatabase("Tester1", ":7070", string(x509.MarshalPKCS1PublicKey(clientPublicKey)))
+	keyBytes, _ := x509.MarshalPKIXPublicKey(clientPublicKey)
+	updateUserInfoDatabase("Tester", ":8080", string(keyBytes))
+	updateUserInfoDatabase("Tester1", ":7070", string(keyBytes))
 
 	startClientHost(settings.ServerIP)
 
