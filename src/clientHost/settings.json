@@ -1,0 +1,10 @@
+{
+	"PublicKeyPath": "./client_public.pem",
+	"PrivateKeyPath": "./client_private.pem",
+	"CertDir": "./cert",
+	"DataBasePath": "./data2.db",
+	"ServerIP": ":8080",
+	"Username": "Tester1",
+	"CentrialServerIP": "localHost:9090",
+	"TokenPath" : "./Token.txt"
+}
