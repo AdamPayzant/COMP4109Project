@@ -8,11 +8,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net"
 	"os"
 	"strconv"
@@ -29,12 +31,21 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var db *sql.DB
-var encryptMSG bool
-var clientPublicKey *rsa.PublicKey
-var hostPrivateKey *rsa.PrivateKey
+type ClientHostSettings struct {
+	PublicKeyPath    string `json:"publicKeyPath"`
+	PrivateKeyPath   string `json:"privateKeyPath"`
+	CertDir          string `json:"certDir"`
+	DataBasePath     string `json:"dataBasePath"`
+	ServerIP         string `json:"serverIP"`
+	Username         string `json:"username"`
+	CentrialServerIP string `json:"centrialServerIP"`
+}
 
-var testingPort string
+var settings ClientHostSettings
+
+var db *sql.DB
+var clientPublicKey *rsa.PublicKey
+var clientPrivateKey *rsa.PrivateKey
 
 var server pb_server.ServerClient = nil
 var port = ":9090"
@@ -78,11 +89,27 @@ func updateUserInfoDatabase(user string, ip string, publicKey string) error {
 	return nil
 }
 
+func connectToCentralSever() (pb_server.ServerClient, *grpc.ClientConn, error) {
+	// Connects to the central server
+	// Current uses self-signed TLS for this, I'd rather not go through a CA unless this is actually deployed
+	config := &tls.Config{
+		InsecureSkipVerify: false,
+	}
+	conn, err := grpc.Dial(settings.CentrialServerIP, grpc.WithTransportCredentials(credentials.NewTLS(config)))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return pb_server.NewServerClient(conn), conn, nil
+}
+
 func getUserInfoFromSever(user string) (bool, error) {
+	server, conn, e := connectToCentralSever()
 	ui, e := server.GetUser(context.Background(), &pb_server.Username{Username: user})
 	if e != nil {
 		return false, e
 	}
+	defer conn.Close()
 
 	rsakey, err := x509.ParsePKCS1PublicKey([]byte(ui.PublicKey))
 	if err != nil {
@@ -220,16 +247,18 @@ func encryptForSending(msg string, user string) (string, error) {
 	return cypherText, nil
 }
 
-func decryptReceived(msg string) (string, error) {
-	plainText, err := RSA_OAEP_Decrypt(msg, *hostPrivateKey)
+func decryptForClient(msg string) (string, error) {
+	text, err := RSA_OAEP_Decrypt(msg, *clientPrivateKey)
 	if err != nil {
 		return "", err
 	}
-	return plainText, nil
+
+	return text, nil
 }
 
 func generateSecret(user string) string {
-	return "asdasdsad"
+
+	return "asdsad"
 }
 
 func verifySecret(user string, secret string) bool {
@@ -306,18 +335,34 @@ func (h *host) SendText(ctx context.Context, req *pb_host.ClientText) (*pb_host.
 			return &pb_host.Status{Status: 1}, e
 		}
 
-		sendMSGs := make([]string, len(req.Message.Messages))
-		for i, msg := range req.Message.Messages {
-			fmt.Println(msg)
-			var err error
-			sendMSGs[i], err = encryptForSending(msg, req.TargetUser)
-			if err != nil {
-				log.Println(err)
-				return &pb_host.Status{Status: 1}, nil
-			}
+		var wholeMsg string
+		for _, msg := range req.Message.Messages {
+			wholeMsg = wholeMsg + msg
 		}
 
-		startus, err := connection.RecieveText(context.Background(), &pb_host.H2HText{Message: &pb_host.ListofMessages{Messages: sendMSGs}, User: req.TargetUser, Secret: secret})
+		fmt.Println(wholeMsg)
+
+		var err error
+		wholeMsg, err = encryptForSending(wholeMsg, req.TargetUser)
+		if err != nil {
+			log.Println(err)
+			return &pb_host.Status{Status: 1}, nil
+		}
+
+		chunckSize := 255
+		lastIndex := 0
+		msgLeng := len(wholeMsg)
+		segmentCount := int(math.Ceil(float64(msgLeng) / float64(chunckSize)))
+		msgSegments := make([]string, segmentCount)
+		i := 0
+		for lastIndex < msgLeng {
+			nextIndex := int(math.Min(float64(msgLeng), float64(lastIndex+chunckSize)))
+			msgSegments[i] = wholeMsg[lastIndex:nextIndex]
+			lastIndex = nextIndex
+			i = i + 1
+		}
+
+		startus, err := connection.RecieveText(context.Background(), &pb_host.H2HText{Message: &pb_host.ListofMessages{Messages: msgSegments}, User: req.TargetUser, Secret: secret})
 		if err != nil {
 			return startus, err
 		}
@@ -328,13 +373,11 @@ func (h *host) SendText(ctx context.Context, req *pb_host.ClientText) (*pb_host.
 
 		statement, e := db.Prepare("INSERT INTO conversations (user, id, sender, year, month, day, hour, minute, second, msg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		for _, msg := range req.Message.Messages {
-			if encryptMSG {
-				var err error
-				msg, err = encryptForClient(msg)
-				if err != nil {
-					log.Println(err)
-					return &pb_host.Status{Status: 1}, nil
-				}
+			var err error
+			msg, err = encryptForClient(msg)
+			if err != nil {
+				log.Println(err)
+				return &pb_host.Status{Status: 1}, nil
 			}
 			id = id + 1
 			statement.Exec(req.TargetUser, id, true, year, month, day, hour, minute, second, msg)
@@ -358,30 +401,19 @@ func (h *host) RecieveText(ctx context.Context, req *pb_host.H2HText) (*pb_host.
 		rows.Close()
 
 		statement, _ := db.Prepare("INSERT INTO conversations (user, id, sender, year, month, day, hour, minute, second, msg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		var wholeMsg string
 		for _, msg := range req.Message.Messages {
-			var err error
-			msg, err = decryptReceived(msg)
-			if err != nil {
-				log.Println(err)
-				return &pb_host.Status{Status: 1}, nil
-			}
-
-			fmt.Println(msg)
-			if encryptMSG {
-				var err error
-				msg, err = encryptForClient(msg)
-				if err != nil {
-					log.Println(err)
-					return &pb_host.Status{Status: 1}, nil
-				}
-			}
-
-			id = id + 1
-			_, e := statement.Exec(req.User, id, false, year, month, day, hour, minute, second, msg)
-			if e != nil {
-				log.Fatalf("Error when adding to conversations table: %s", e)
-			}
+			wholeMsg = wholeMsg + msg
 		}
+
+		fmt.Println(wholeMsg)
+
+		id = id + 1
+		_, e := statement.Exec(req.User, id, false, year, month, day, hour, minute, second, wholeMsg)
+		if e != nil {
+			log.Fatalf("Error when adding to conversations table: %s", e)
+		}
+
 		db.Exec("UPDATE userInfo SET msgCount=" + strconv.Itoa(id) + " WHERE user='" + req.User + "'")
 
 		return &pb_host.Status{Status: 0}, nil
@@ -407,7 +439,7 @@ func initDB(file string) {
 	db.Exec("create table if not exists userInfo (user text not null primary key, msgCount integer, ip integer not null, key text not null)")
 }
 
-func startClientHost() {
+func startClientHost(ip string) {
 	serverCert, err := tls.LoadX509KeyPair("./certs/server-cert.pem", "./certs/server-key.pem")
 	if err != nil {
 		log.Fatalf("Failed to setup TLS: %v", err)
@@ -418,7 +450,7 @@ func startClientHost() {
 		ClientAuth:   tls.NoClientCert,
 	}
 
-	lis, err := net.Listen("tcp", testingPort)
+	lis, err := net.Listen("tcp", ip)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -430,77 +462,69 @@ func startClientHost() {
 	}
 }
 
-func connectToCentralSever() {
-	// Connects to the central server
-	// Current uses self-signed TLS for this, I'd rather not go through a CA unless this is actually deployed
-	config := &tls.Config{
-		InsecureSkipVerify: false,
-	}
-	conn, err := grpc.Dial(serverAddress, grpc.WithTransportCredentials(credentials.NewTLS(config)))
+func tryLoadClientPublicKey(file string) *rsa.PublicKey {
+	_, err := os.Stat(file)
 	if err != nil {
-		log.Fatalf("Did not connect: %v", err)
+		log.Fatalln("unable to open publicKey from path")
 	}
-	defer conn.Close()
-	server = pb_server.NewServerClient(conn)
+
+	raw, _ := ioutil.ReadFile(file)
+	block, _ := pem.Decode([]byte(raw))
+	if block == nil {
+		log.Fatalln("unable to decode publicKey")
+	}
+	key, e := x509.ParsePKIXPublicKey(block.Bytes)
+	if e != nil {
+		log.Fatalln(e)
+	}
+
+	return key.(*rsa.PublicKey)
 }
 
-func tryLoadClientPublicKey() {
-	file := "./client_public.pem"
+func tryLoadClientPrivateKey(file string) *rsa.PrivateKey {
 	_, err := os.Stat(file)
-
-	if err == nil {
-		raw, _ := ioutil.ReadFile(file)
-		block, _ := pem.Decode([]byte(raw))
-		if block == nil {
-			log.Fatalln("unable to decode publicKey to request")
-		}
-		key, e := x509.ParsePKIXPublicKey(block.Bytes)
-		if e != nil {
-			log.Fatalln(e)
-		}
-
-		clientPublicKey = key.(*rsa.PublicKey)
+	if err != nil {
+		log.Fatalln("unable to open privateKey from path")
 	}
+
+	raw, _ := ioutil.ReadFile(file)
+	block, _ := pem.Decode([]byte(raw))
+	if block == nil {
+		log.Fatalln("unable to decode publicKey to request")
+	}
+	key, e := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if e != nil {
+		log.Fatalln(e)
+	}
+
+	return key
 }
 
-func tryLoadHostPrivateKey() {
-	file := "./client_private.pem"
-	_, err := os.Stat(file)
-
-	if err == nil {
-		raw, _ := ioutil.ReadFile(file)
-		block, _ := pem.Decode([]byte(raw))
-		if block == nil {
-			log.Fatalln("unable to decode publicKey to request")
-		}
-		key, e := x509.ParsePKCS1PrivateKey(block.Bytes)
-		if e != nil {
-			log.Fatalln(e)
-		}
-
-		hostPrivateKey = key
-	} else {
+func loadSettings(file string) {
+	raw, err := ioutil.ReadFile(file)
+	if err != nil {
 		log.Fatalln(err)
+	}
+
+	e := json.Unmarshal(raw, &settings)
+	if e != nil {
+		log.Fatalf("Could not load settings: %v", e)
 	}
 }
 
 func main() {
-	dbfile := "./data.db"
-	testingPort = os.Args[1]
-	dbfile = os.Args[2]
-	encryptMSG = true
+	settingsPath := os.Args[1]
 	userInfoCache = make(map[string]*UserInfo)
 
-	tryLoadClientPublicKey()
-	tryLoadHostPrivateKey()
-	initDB(dbfile)
+	loadSettings(settingsPath)
+	clientPublicKey = tryLoadClientPublicKey(settings.PublicKeyPath)
+	clientPrivateKey = tryLoadClientPrivateKey(settings.PrivateKeyPath)
+	initDB(settings.DataBasePath)
 
-	updateUserInfoDatabase("Test0", ":8080", string(x509.MarshalPKCS1PublicKey(clientPublicKey)))
-	updateUserInfoDatabase("Test1", ":9090", string(x509.MarshalPKCS1PublicKey(clientPublicKey)))
+	updateUserInfoDatabase("Tester", ":8080", string(x509.MarshalPKCS1PublicKey(clientPublicKey)))
+	updateUserInfoDatabase("Tester1", ":7070", string(x509.MarshalPKCS1PublicKey(clientPublicKey)))
 
-	// connectToCentralSever()
-
-	startClientHost()
+	startClientHost(settings.ServerIP)
 
 	db.Close()
 }

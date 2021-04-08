@@ -46,7 +46,7 @@ func main() {
 	config := &tls.Config{
 		InsecureSkipVerify: true,
 	}
-	conn, err := grpc.Dial(":9090", grpc.WithTransportCredentials(credentials.NewTLS(config)))
+	conn, err := grpc.Dial(":8080", grpc.WithTransportCredentials(credentials.NewTLS(config)))
 	// conn, err := grpc.Dial(":9090", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Did not connect: %v", err)
@@ -54,7 +54,7 @@ func main() {
 	defer conn.Close()
 	server = pb_host.NewClientHostClient(conn)
 
-	response, err := server.SendText(context.Background(), &pb_host.ClientText{TargetUser: "Test0", Message: &pb_host.ListofMessages{Messages: []string{"test", "test", "test"}}, Token: "TEst"})
+	response, err := server.SendText(context.Background(), &pb_host.ClientText{TargetUser: "Tester1", Message: &pb_host.ListofMessages{Messages: []string{"test", "test", "test"}}, Token: "TEst"})
 	if err != nil {
 		log.Fatalf("Error when calling SendText: %s", err)
 	}
