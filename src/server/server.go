@@ -10,12 +10,13 @@ import (
 	"crypto/x509"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
 )
 
 const (
-	port = ":50051"
+	port = ":9090"
 )
 
 type server struct {
@@ -94,19 +95,18 @@ func (s *server) GetUser(ctx context.Context, req *pb_server.Username) (*pb_serv
 
 func main() {
 	fmt.Println("Starting server")
-	/*
-		creds, err := credentials.NewServerTLSFromFile("certs/server-cert.pem", "certs/server-key.pem")
-		if err != nil {
-			log.Fatalf("Failed to setup TLS: %v", err)
-		}
-	*/
+
+	creds, err := credentials.NewServerTLSFromFile("certs/server-cert.pem", "certs/server-key.pem")
+	if err != nil {
+		log.Fatalf("Failed to setup TLS: %v", err)
+	}
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	//s := grpc.NewServer(grpc.Creds(creds))
-	s := grpc.NewServer()
+	s := grpc.NewServer(grpc.Creds(creds))
+	//s := grpc.NewServer()
 	pb_server.RegisterServerServer(s, &server{})
 
 	err = connect()
