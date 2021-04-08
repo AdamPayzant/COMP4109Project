@@ -21,6 +21,8 @@ let chatHistories = {}
 let UIView = null
 let hostConnection = null;
 let chat = null
+let communicationToken = "123asdasdasdasdas45678"
+
 
 /*##################################*\
   Basic Electron Startup
@@ -65,11 +67,17 @@ app.on('activate', () => {
 ipcMain.on('chatSent', (event, chatText)=>{
   SendText(chatText)
   //Send to Host Here
+  if(hostConnection != null)
+    hostConnection.DeleteMessage({targetUser:otherUser.name, message:[sanatizeText(chatText)], token:communicationToken});
+
 })
 
 ipcMain.on('deleteMSG', (event, msgID)=>{
   deleteMessage(msgID)
   //Send to Host Here
+
+  if(hostConnection != null)
+    hostConnection.DeleteMessage({user:userData.name, messageID:int(msgID), token:communicationToken});
 })
 
 ipcMain.on('loginAttempt',(event, loginData)=>{
@@ -207,7 +215,10 @@ function fetchData(requestOBJ){
       return chat
 
     case 'connection':
-      return 2
+      return 2    
+      
+    case 'userData':
+      return userData
 
     case 'otherClientName':
       return otherUser.name || "U. N. Owen"
@@ -252,7 +263,7 @@ function SendText(chatText) {
     console.log("Client Sent: " + chatText.payload)
     
     if(chat != null){
-      let msgData = chat.addMSGuser(sanatizeText(chatText.payload), null)
+      let msgData = chat.addMSGOther(userData.identifier, sanatizeText(chatText.payload), null)
       chatHistories[otherUser.identifier] = chat
       UIView.webContents.send('inBoundChat', msgData)
     }
@@ -278,7 +289,7 @@ function RecieveText(text, identifier) {
   console.log("Other Sent: " + chatText.payload)
 
   if(chat != null){
-    let msgData = chat.addMSGOther(identifier, sanatizeText(text), null)
+    let msgData = chat.addMSGOther(otherUser.identifier, sanatizeText(text), null)
     UIView.webContents.send('inBoundChat', msgData)
   }
 }
@@ -301,7 +312,7 @@ function requestChat(id){
 
 
   //Start Connection
-  createNewHostConnection();
+  //createNewHostConnection();
 
   if(false){
     UIView.webContents.send('userConnection', {status:"failed", issue:"User Not found"})
@@ -442,7 +453,7 @@ function populateAddressBook(searchValue, searchType){
 \*##################################*/
 function start(){
 
-  userData = {key:"12345678", name:"Bob"}
+  userData = {key:"12345678", identifier: parseInt(Math.floor( Math.random() * Math.pow(2,42))), name:"Bob"}
   //hostConnectionData = new networkInformation("127.0.0.1", "9090", "user")
   //otherUser = {key:"12345678", name:"Alice", IP:"",status:""}
 
@@ -489,7 +500,7 @@ function createNewHostConnection(credentials){
 
   let networkAddr = "" + hostConnectionData.ip + ":" + hostConnectionData.port || "127.0.0.1:9090";
 
-  const packageDefinition = protoLoader.loadSync('./modules/proto/client.proto', {
+  const packageDefinition = protoLoader.loadSync('./modules/proto/host.proto', {
     keepCase: true,
     longs: String,
     enums: String,
@@ -503,16 +514,24 @@ function createNewHostConnection(credentials){
 
     */
 
-    const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs.client;
-    let outbound = new clientConstructor(networkAddr, grpcLibrary.credentials.createInsecure());
+    const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs.clientHost;
+    outbound = new clientConstructor(networkAddr, grpcLibrary.credentials.createInsecure());
+    hostConnection = outbound.GetConversation({token:communicationToken, username:userData.name})
+
+
+    console.log(hostConnection);
+
+    /*
     let hostConnection = outbound.join({user:userData.name, text:JSON.stringify({password:"12345678"})})
+
+    let test = outbound.GetConversation
 
     hostConnection.on('data', (data)=>{
 
       if(data.token != loginStatus){
         return
       }
-      /*
+     
       switch(data.action){
 
         case 'reciveMessage':
@@ -525,7 +544,6 @@ function createNewHostConnection(credentials){
 
       }
 
-      */
     })
 
     hostConnection.on('status', ()=>{
@@ -537,7 +555,8 @@ function createNewHostConnection(credentials){
 
     hostConnection.on('close', ()=>{
       dissconnectFromHost();
-    })
+    })  
+    */
 
     UIView.webContents.send('hostConnect');
 
