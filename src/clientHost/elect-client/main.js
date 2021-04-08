@@ -263,7 +263,7 @@ function SendText(chatText) {
     console.log("Client Sent: " + chatText.payload)
     
     if(chat != null){
-      let msgData = chat.addMSGOther(userData.identifier, sanatizeText(chatText.payload), null)
+      let msgData = chat.addMSGOther(-1, sanatizeText(chatText.payload), null)
       chatHistories[otherUser.identifier] = chat
       UIView.webContents.send('inBoundChat', msgData)
     }
@@ -289,7 +289,7 @@ function RecieveText(text, identifier) {
   console.log("Other Sent: " + chatText.payload)
 
   if(chat != null){
-    let msgData = chat.addMSGOther(otherUser.identifier, sanatizeText(text), null)
+    let msgData = chat.addMSGOther(1, sanatizeText(text), null)
     UIView.webContents.send('inBoundChat', msgData)
   }
 }
@@ -453,12 +453,12 @@ function populateAddressBook(searchValue, searchType){
 \*##################################*/
 function start(){
 
-  userData = {key:"12345678", identifier: parseInt(Math.floor( Math.random() * Math.pow(2,42))), name:"Bob"}
+  userData = {key:"12345678", name:"Bob"}
   //hostConnectionData = new networkInformation("127.0.0.1", "9090", "user")
   //otherUser = {key:"12345678", name:"Alice", IP:"",status:""}
 
   //Note public keys here are hashes (Just here for debugging)
-  /*
+  
   addressBook = [
     {name:"Alice", indentifier:"5672", publicKey:"64489c85dc2fe0787b85cd87214b3810", ip: "127.0.0.1", port:"9090", status: "Online"},
     {name:"Bob", indentifier:"7036", publicKey:"2fc1c0beb992cd7096975cfebf9d5c3b", ip: "127.0.0.1", port:"9090", status: "Online"},
@@ -476,7 +476,7 @@ function start(){
         {order:2, speaker:-1, messageText:"...", metadata:{}}
       ], speakers: [{speakerID:0, identifier:5672}]
   }}
-  */
+
   hostConnectionData = {
     ip : "localhost",
     port : "9090"

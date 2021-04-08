@@ -58,13 +58,11 @@
             var input = document.getElementById("input");
             var output = document.getElementById("output");
             var statusArea = document.getElementById("clinetSatus");
-            var userData = ipcRenderer.sendSync('fetch', 'userData')
-
-
 
             const { ipcRenderer } = require("electron")
 
             let connectionData = {"network": "", "port": "", "username": ""};
+            var userData = ipcRenderer.sendSync('fetch', 'userData')
 
             function postToChat(e){
                 output.innerHTML += formatMessageForDisplay(e)
@@ -82,7 +80,7 @@
 
                 let msgColor = 1;
 
-                if(chatID == userData.identifier){
+                if(chatID < 0){
                     msgColor = 0;
                     msgType = "chatBubbleUser"
                 } else {
