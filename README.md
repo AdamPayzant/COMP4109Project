@@ -113,6 +113,10 @@ Once the setup has been complete, the server is started by the following single 
 ```
 
 ### Client Host
+Once the setup has been complete, the server is started by the following single command:
+```
+./clientHost <path to the settings JSON file>
+```
 
 ---
 
