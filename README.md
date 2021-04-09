@@ -26,6 +26,7 @@ Once all of this setup is complete, the server is ready.
 The client host has only been validated in windows, though it is likely compatible with other OS's.s
 The client host can be either built from source or run from a precompiled binary.
 The client host needs some external files to be created before running.
+```
 Client Host will need:
     A JSON settings file that contains: 
         "PublicKeyPath": "<client public key path>.pem",
@@ -39,6 +40,7 @@ Client Host will need:
         server-cert.pem           cert for clientHost
         server-key.pem            keu for clientHost
         ca-centralServerCert.pem  CA of central server
+```
 ---
 
 ### Client
