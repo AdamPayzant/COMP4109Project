@@ -307,7 +307,7 @@ function deleteMessage(msgID) {
   UIView.webContents.send('deleteMessage', msgID);
 
 }
-function RecieveText(text, identifier) {
+function RecieveText(text) {
 
   console.log("Other Sent: " + chatText.payload)
 
@@ -360,7 +360,7 @@ function requestChat(id){
     return;
   }  
 
-  timer = setInterval(loadChatData(id), 1000);
+  timer = setInterval(getNewMessages(id), 1000);
 
   //Load user data
   //loadChatData(id);
@@ -388,25 +388,28 @@ function loadChatData(id){
       }
     })
 
-
-
   }
 
   console.log(tempHist);
 
+  let processedList = [];
 
-  for (s of chatHistory){
+  for (s of tempHist.convo){
+
+    //Decrypt 
+    processedList.push(s)
 
 
   }
 
   if(tempHist.convo != null){
-    chat = new chatHistory(0, null, tempHist.convo, tempHist.convo.sort((a,b)=>{ return a < b})[0].order + 1)
+    chat = new chatHistory(0, null, processedList, processedList.sort((a,b)=>{ return a < b})[0].order + 1)
 
   for (s of chatHistory.messages.length()){
     chatHistory.messages[s] = rsaHostKey.decrypt(chatHistory.messages[s]);
   }
     otherUser = {name:id, indentifier:"5672", publicKey:"", ip: "127.0.0.1", port:"9090", status: "Online"};
+    
   } else {
     return
   }
@@ -414,6 +417,35 @@ function loadChatData(id){
   chatHistories[id] = chat
 
 }
+
+function getNewMessages(id){
+
+  let tempHist = {}
+
+  if(outbound != null){
+    tempHist = outbound.GetConversation({token:config.key, username:id}, function(err, responce){
+      console.log(responce);
+      
+      if(err){
+        console.log(err)
+        tempHist = null;
+      }
+    })
+
+  }
+
+  if(!tempHist){
+    return;
+  }
+
+  for (x of tempHist.message){
+    //Decrypt
+    RecieveText(x);
+  }
+  
+}
+
+
 
 /* Extra Fucntion related to the others */
 function dissconnectFromHost(){
@@ -459,7 +491,7 @@ function start(){
   if(!fs.statSync(configFilePath).isDirectory()){
     configFilePath = ".";
   }
-  
+
   try {
     config = JSON.parse(fs.readFileSync(configFilePath+"/userData.json"));
   } catch (error) {
@@ -468,7 +500,7 @@ function start(){
   }
   
 
-  rsaKey = new rsaLib({b:2048});
+  rsaKey = new rsaLib();
 
   fs.readFile(configFilePath+"/rsaKeyPrivate.pem",(err, data)=>{
 
@@ -488,13 +520,13 @@ function start(){
 
 
   fs.readFile(configFilePath + "/client_public.pem", (err, data)=>{
-      if(err){
-        console.error(err);
-        return;
-      }
-      rsaHostKey = new rsaLib(data, "pkcs8-public-pem");
+    if(err){
+      console.error(err);
+      return;
+    }
+    rsaHostKey = new rsaLib(data, "pkcs8-public-pem");
 
-    });
+  });
 
     //app.exit();
   
@@ -527,7 +559,9 @@ function createNewHostConnection(credentials){
 
     const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs.clientHost;
     outbound = new clientConstructor(networkAddr, grpcLibrary.credentials.createInsecure());
-    /*
+
+    console.log(outbound.Dial(networkAddr, grpcLibrary.credentials.createInsecure()));
+
     outbound.ReKey({token:rsaKey.exportKey("pkcs1-public-pem")}, function(err, responce){
       if(err){
         console.log(err)
@@ -537,7 +571,7 @@ function createNewHostConnection(credentials){
       console.log(responce);
       UIView.webContents.send('hostConnect');
     });
-  */
+
   } catch (error) {
     console.log(error);
     UIView.webContents.send('userConnection', {status:"Failed", message:"host Login failed"});

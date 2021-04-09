@@ -32,3 +32,7 @@ ca-key.pem
 server-cert.pem
 server-key.pem
 server-req.pem
+rsaKeyPrivate.pem
+rsaKeyPublic.pem
+
+userData.json
