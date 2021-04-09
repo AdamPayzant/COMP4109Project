@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math"
@@ -20,8 +21,8 @@ import (
 	"strconv"
 	"time"
 
-	// pb_host "pb_host"
-	pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
+	pb_host "pb_host"
+	// pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
 	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
 
 	"google.golang.org/grpc"
@@ -94,9 +95,22 @@ func updateUserInfoDatabase(user string, ip string, publicKey string) error {
 func connectToCentralSever() (pb_server.ServerClient, *grpc.ClientConn, error) {
 	// Connects to the central server
 	// Current uses self-signed TLS for this, I'd rather not go through a CA unless this is actually deployed
-	config := &tls.Config{
-		InsecureSkipVerify: false,
+
+	pemServerCA, err := ioutil.ReadFile(settings.CertDir + "/ca-centralServerCert.pem")
+	if err != nil {
+		return nil, nil, err
 	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(pemServerCA) {
+		return nil, nil, fmt.Errorf("failed to add server CA's certificate")
+	}
+
+	config := &tls.Config{
+		InsecureSkipVerify: true, //Set to true when real CAs have been implemented
+		RootCAs:            certPool,
+	}
+
 	conn, err := grpc.Dial(settings.CentrialServerIP, grpc.WithTransportCredentials(credentials.NewTLS(config)))
 	if err != nil {
 		return nil, nil, err
@@ -157,7 +171,7 @@ func loadUserInfo(user string) (bool, error) {
 		userInfoCache[user] = userInfo
 	} else {
 		rows.Close()
-		_, e := getUserInfoFromSever(name)
+		_, e := getUserInfoFromSever(user)
 		if e != nil {
 			return false, e
 		}
@@ -225,7 +239,6 @@ func RSA_OAEP_Decrypt(cipherText string, privKey *rsa.PrivateKey) (string, error
 	if err != nil {
 		return "", err
 	}
-	// fmt.Println("Plaintext:", string(plaintext))
 	return string(plaintext), nil
 }
 
@@ -262,7 +275,6 @@ func decryptForClient(msg string) (string, error) {
 }
 
 func generateSecret(user string) string {
-
 	return "asdsad"
 }
 
@@ -337,7 +349,7 @@ func (h *host) SendText(ctx context.Context, req *pb_host.ClientText) (*pb_host.
 		secret := generateSecret(req.TargetUser)
 		connection, conn, e := connectToUser(req.TargetUser)
 		if e != nil {
-			log.Println(e)
+			log.Printf("Failed to connect to user: %v", e)
 			return &pb_host.Status{Status: 1}, e
 		}
 
@@ -506,7 +518,7 @@ func initDB(file string) {
 }
 
 func startClientHost(ip string) {
-	serverCert, err := tls.LoadX509KeyPair("./certs/server-cert.pem", "./certs/server-key.pem")
+	serverCert, err := tls.LoadX509KeyPair(settings.CertDir+"/server-cert.pem", settings.CertDir+"/server-key.pem")
 	if err != nil {
 		log.Fatalf("Failed to setup TLS: %v", err)
 	}
@@ -584,6 +596,11 @@ func decryptToken(token []byte) ([]byte, error) {
 }
 
 func getTokenFromServer() ([]byte, error) {
+	server, conn, err := connectToCentralSever()
+	if err != nil {
+		log.Printf("Failed to get Token from Server: %v", err)
+	}
+	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	pd_server_token, e := server.GetToken(ctx, &pb_server.Username{Username: settings.Username})
@@ -599,7 +616,7 @@ func getTokenFromServer() ([]byte, error) {
 func registerOrUpdateUserIfNeeded() {
 	server, conn, e := connectToCentralSever()
 	if e != nil {
-		log.Printf("Could verify if user needs to be registered: %v", e)
+		log.Printf("Could not verify if user needs to be registered: %v", e)
 	} else {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
@@ -616,14 +633,19 @@ func registerOrUpdateUserIfNeeded() {
 			status, er := server.Register(ctx, &pb_server.UserReg{Username: settings.Username, Key: keyBytes, Ip: settings.ServerIP})
 			if er != nil {
 				log.Printf("Failed to register User: %v", er)
-			}
-
-			if status.Status != 0 {
-				log.Printf("Failed to register User: return state: %s", status)
+			} else {
+				if status.Status != 0 {
+					log.Printf("Failed to register User: return state: %s", status)
+				} else {
+					log.Printf("Registed User!")
+				}
 			}
 		} else {
 			token, _ := getTokenFromServer()
-			PKIXkey, _ := x509.ParsePKIXPublicKey(pb_server_userInfo.PublicKey)
+			PKIXkey, err := x509.ParsePKIXPublicKey(pb_server_userInfo.PublicKey)
+			if err != nil {
+				log.Println("Failed to parse public key from  centrial Server: %v", err)
+			}
 			key := PKIXkey.(*rsa.PublicKey)
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -637,6 +659,10 @@ func registerOrUpdateUserIfNeeded() {
 					NewKey:  newKey})
 				if key_e != nil {
 					log.Printf("Failed to update Key: return state: %s", key_status)
+				} else {
+					if key_status.Status == 0 {
+						log.Printf("Updated Key!")
+					}
 				}
 			}
 
@@ -646,6 +672,10 @@ func registerOrUpdateUserIfNeeded() {
 					NewIP:   settings.ServerIP})
 				if ip_e != nil {
 					log.Printf("Failed to update IP: return state: %s", ip_status)
+				} else {
+					if ip_status.Status == 0 {
+						log.Printf("Updated IP!")
+					}
 				}
 			}
 		}
@@ -659,12 +689,12 @@ func main() {
 	loadSettings(settingsPath)
 	clientPublicKey = tryLoadClientPublicKey(settings.PublicKeyPath)
 	clientPrivateKey = tryLoadClientPrivateKey(settings.PrivateKeyPath)
-	// registerOrUpdateUserIfNeeded()
 	initDB(settings.DataBasePath)
+	registerOrUpdateUserIfNeeded()
 
-	keyBytes, _ := x509.MarshalPKIXPublicKey(clientPublicKey)
-	updateUserInfoDatabase("Tester", ":8080", string(keyBytes))
-	updateUserInfoDatabase("Tester1", ":7070", string(keyBytes))
+	// keyBytes, _ := x509.MarshalPKIXPublicKey(clientPublicKey)
+	// updateUserInfoDatabase("Tester", ":8080", string(keyBytes))
+	// updateUserInfoDatabase("Tester1", ":7070", string(keyBytes))
 
 	startClientHost(settings.ServerIP)
 
