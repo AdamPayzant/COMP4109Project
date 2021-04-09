@@ -4,8 +4,7 @@
 const {ipcMain, app, BrowserWindow, clipboard, dialog} = require('electron');
 const {sanatizeText, passwordCheckDebug, fragmentStreamlined} = require('./modules/utilityFunctions.js');
 const {chatHistory} = require('./modules/chatHistoryClass.js')
-const {clientCommunication} = require('./modules/clientCommuniction.js');
-const {networkInformation} = require('./modules/networkInformation.js');
+const fs = require('fs')
 const grpcLibrary = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 
@@ -19,9 +18,10 @@ let otherUser = null
 let addressBook = []
 let chatHistories = {}
 let UIView = null
-let hostConnection = null;
+let outbound = null;
 let chat = null
 let communicationToken = "123asdasdasdasdas45678"
+let timer = null;
 
 
 /*##################################*\
@@ -68,7 +68,7 @@ ipcMain.on('chatSent', (event, chatText)=>{
   SendText(chatText)
   //Send to Host Here
   if(outbound != null)
-  outbound.DeleteMessage({targetUser:otherUser.name, message:[sanatizeText(chatText)], token:communicationToken});
+    outbound.SendText({targetUser:otherUser.name, message:[sanatizeText(chatText)], token:communicationToken});
 
 })
 
@@ -77,7 +77,7 @@ ipcMain.on('deleteMSG', (event, msgID)=>{
   //Send to Host Here
 
   if(outbound != null)
-  outbound.DeleteMessage({user:userData.name, messageID:int(msgID), token:communicationToken});
+    outbound.DeleteMessage({user:userData.name, messageID:int(msgID), token:communicationToken});
 })
 
 ipcMain.on('loginAttempt',(event, loginData)=>{
@@ -120,10 +120,13 @@ ipcMain.on('requestChat', (event, id)=>{
   requestChat(id);
 })
 
-
+ipcMain.on('requestChatUName', (event, id)=>{
+  requestChat(id);
+})
 
 ipcMain.on('updateUser', (event, name)=>{
   userData.name = name;
+  fs.writeFileSync("./userData.json", JSON.stringify(userData))
 })
 
 ipcMain.on('connectToHost', (event, networkObject)=>{
@@ -137,10 +140,10 @@ ipcMain.on('connectToHost', (event, networkObject)=>{
 
 //Leave
 ipcMain.on('endChat', (event)=>{
+  timer = null;
   chat = null;
   otherUser = null;
 
-  //Disconnect Action Here()
   changeView('menu');
 })
 
@@ -190,15 +193,7 @@ function changeView(destination){
     case 'chat':
       UIView.loadFile('./UI/HTML/chat.html');
       break    
-/* 
-    case 'chatHistory':
-      UIView.loadFile('./UI/HTML/chatHistory.html');
-      break    
-      
-    case 'blocklist':
-      UIView.loadFile('./UI/HTML/blocklist.html');
-      break
-*/
+
     case 'menu':
       UIView.loadFile('./UI/HTML/mainMenu.html');
       break
@@ -308,7 +303,8 @@ function requestChat(id){
     return;
   }
 
-  if(outbound != null){
+  if(outbound === null){
+    UIView.webContents.send('userConnection', {status:"failed", issue:"Host Not Connected"});
     return;
   }
 
@@ -320,22 +316,25 @@ function requestChat(id){
 
     if(otherUser != null){
       loadChatData(otherUser.name)
-    }
+    } 
 
 
-  }else if (typeof(id) == "string"){
+  } else if (typeof(id) == "string"){
 
     loadChatData(id)
 
   } else {return;}
 
+
   //Start Connection
   //createNewHostConnection();
 
-  if(false){
+  if(chat == null){
     UIView.webContents.send('userConnection', {status:"failed", issue:"User Not found"})
     return;
   }  
+
+  timer = setInterval(loadChatData(id), 1000);
 
   //Load user data
   //loadChatData(id);
@@ -347,107 +346,38 @@ function requestChat(id){
 
 }
 
-function confirmChat(){
-
-  let responce = 1;
-
-  if(chat != null || otherUser != null){
-    responce = dialog.showMessageBoxSync(UIView, {
-        message:"XXXX would like to chat with you.",
-        type:"info",
-        buttons:["Accept", "Deny"],
-        defaultID:1,
-        title:"Chat Request",
-        cancelId:1
-      });
-  }
-
-  //Deny Selected
-  if(responce){
-
-    //
-
-  //Accept Selected
-  } else {
-
-
-  }
-
-  return;
-
-}
 
 function loadChatData(id){
 
   let tempHist = {}
-
+  
   //Replace user getting data from other source
   if(outbound != null){
-    tempHist = outbound.GetConversation({token:communicationToken, username:otherUser.name})
-
-  } else {
-
-    //Load Chat history (Fallback if Hisory is not found)
-    //Create if does not exist
-    tempHist = chatHistories[id]
+    tempHist = outbound.GetConversation({token:communicationToken, username:id})
   }
 
-  if(tempHist != null){
-    chat = new chatHistory(id, tempHist.speakers, tempHist.messages, tempHist.newID)
+  console.log(tempHist);
+
+  if(tempHist.convo != null){
+    chat = new chatHistory(0, null, tempHist.convo, tempHist.convo.sort((a,b)=>{ return a < b})[0].order + 1)
+    otherUser = {name:id, indentifier:"5672", publicKey:"", ip: "127.0.0.1", port:"9090", status: "Online"};
   } else {
-    chat = new chatHistory(id)
+    return
   }
 
   chatHistories[id] = chat
 
 }
 
-
-/* Events for Conversations*/
-function InitializeConvo() {
-
-}
-
-function ConfirmConvo() {
-
-}
-
-function GetConversation() {
-
-}
-
-/* Host connection events */
-
-/*##################################*\
-  Functions listed in diagram 4 in purposal
-\*##################################*/
-
-function registerWithHost(){
-
-}
-
-function updateIPaddress(){
-
-}
-
-function updateKey(){
-
-}
-
-function getUserIP(){
-
-}
-
 /* Extra Fucntion related to the others */
 function dissconnectFromHost(){
   if(outbound != null){
+    timer = null;
     outbound.close();
     outbound = null
   }
 }
 
-function dissconnectFromOtherChat(){
-}
 
 function populateAddressBook(searchValue, searchType){
 
@@ -478,38 +408,14 @@ function populateAddressBook(searchValue, searchType){
 \*##################################*/
 function start(){
 
-  userData = {key:"12345678", name:"Bob"}
-  //hostConnectionData = new networkInformation("127.0.0.1", "9090", "user")
-  //otherUser = {key:"12345678", name:"Alice", IP:"",status:""}
+  userData = JSON.parse(fs.readFileSync("./userData.json"))
 
-  //Note public keys here are hashes (Just here for debugging)
-  /*
-  addressBook = [
-    {name:"Alice", indentifier:"5672", publicKey:"64489c85dc2fe0787b85cd87214b3810", ip: "127.0.0.1", port:"9090", status: "Online"},
-    {name:"Bob", indentifier:"7036", publicKey:"2fc1c0beb992cd7096975cfebf9d5c3b", ip: "127.0.0.1", port:"9090", status: "Online"},
-    {name:"Eve", indentifier:"4962", publicKey:"d3f791f59cbeff0ec06afb94bb23e772", ip: "127.0.0.1", port:"9090", status: "Online"},
-    {name:"Marvin", indentifier:"4085", publicKey:"7db16a4ce881aecec2bfeb3e0c741888", ip: "127.0.0.1", port:"9090", status: "Online"},
-    {name:"Oscar", indentifier:"8754", publicKey:"48a0572e6e7cfc81b428b18da87cf613", ip: "127.0.0.1", port:"9090", status: "Online"},
-    {name:"Peggy", indentifier:"9914", publicKey:"469a32447498e6238dab042c08098b98", ip: "127.0.0.1", port:"9090", status: "Online"},
-    {name:"Victor", indentifier:"337", publicKey:"82233bce59652cf3cc0eb7a03f3109d1", ip: "127.0.0.1", port:"9090", status: "Online"},
-    {name:"Trent", indentifier:"6200", publicKey:"a52f4256f1abed061d9cceee75907248", ip: "127.0.0.1", port:"9090", status: "Online"}
-  ]
-  chatHistories = {
-      5672: {newID: 3, messages: [
-        {order:0, speaker:-1, messageText:"Hello", metadata:{}}, 
-        {order:1, speaker:0, messageText:"Bonjour", metadata:{}},
-        {order:2, speaker:-1, messageText:"...", metadata:{}}
-      ], speakers: [{speakerID:0, identifier:5672}]
-  }}
-  */
   hostConnectionData = {
     ip : "localhost",
     port : "9090"
   };
 
-  //outbound = new clientCommunication();
-  //chat = new chatHistory(101013731);
-  //outbound.establishConnection(hostConnectionData)
+
 
 
 }start();
@@ -535,59 +441,17 @@ function createNewHostConnection(credentials){
 
   try {
 
-    /* Found an example of a chat application https://techblog.fexcofts.com/2018/07/20/grpc-nodejs-chat-example/  
-
-    */
+    /* Found an example of a chat application https://techblog.fexcofts.com/2018/07/20/grpc-nodejs-chat-example/*/
 
     const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs.clientHost;
     outbound = new clientConstructor(networkAddr, grpcLibrary.credentials.createInsecure());
-    //hostConnection = outbound.GetConversation({token:communicationToken, username:userData.name})
-
-
-    //console.log(hostConnection);
-
-    /*
-    let hostConnection = outbound.join({user:userData.name, text:JSON.stringify({password:"12345678"})})
-
-    let test = outbound.GetConversation
-
-    hostConnection.on('data', (data)=>{
-
-      if(data.token != loginStatus){
-        return
-      }
-     
-      switch(data.action){
-
-        case 'reciveMessage':
-          RecieveText(data.text, 1)
-          break;
-
-        case 'deleteMessage':
-          deleteMessage(data.text)
-          break;
-
-      }
-
-    })
-
-    hostConnection.on('status', ()=>{
-    })
-
-    hostConnection.on('error', ()=>{
-      hostConnection = null;
-    })
-
-    hostConnection.on('close', ()=>{
-      dissconnectFromHost();
-    })  
-    */
+    
 
     UIView.webContents.send('hostConnect');
 
   } catch (error) {
     console.log(error);
-    UIView.webContents.send('loginStatus', -1);
+    UIView.webContents.send('userConnection', {status:"Failed", message:"host Login failed"});
   }
 
 }

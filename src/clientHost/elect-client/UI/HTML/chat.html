@@ -64,6 +64,8 @@
             let connectionData = {"network": "", "port": "", "username": ""};
             var userData = ipcRenderer.sendSync('fetch', 'userData')
 
+            let timer = setInterval(start(), 1000);
+
             function postToChat(e){
                 output.innerHTML += formatMessageForDisplay(e)
                 console.log(JSON.stringify(e))

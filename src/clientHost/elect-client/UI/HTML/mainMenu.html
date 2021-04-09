@@ -143,8 +143,8 @@
             ipcRenderer.send('endHostConnection');
         }
 
-        ipcRenderer.on('chatRequest', (event, message)=>{
-
+        ipcRenderer.on('userConnection', (event, message)=>{
+            alert(message.issue);
         })
 
         ipcRenderer.on('hostDisconnect', (event)=>{
