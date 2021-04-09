@@ -90,21 +90,21 @@ Once the setup has been complete, the server is started by the following single 
 
 ##### Startup
 
-    Once the node modules are installed, you can start the program run:
-    ```
-    nmp start
-    ```
-    The client can be configured using by modifiying the file `userData.json` 
+Once the node modules are installed, you can start the program run:
+```
+nmp start
+```
+The client can be configured by modifiying the file `userData.json` 
 
 
 ##### Operation
 
-    Once the client has started enter the address for the host in the 
-    center field of the host section and press connect. This should connect 
-    you to the host server, if not an error will appear.
+Once the client has started enter the address for the host in the 
+center field of the host section and press connect. This should connect 
+you to the host server, if not an error will appear.
 
-    Once connected, to start chatting press on the  *One time Connection* button.
-    Then fill in the username of who you want to talk to and hit *Connect*
+Once connected, to start chatting press on the  *One time Connection* button.
+Then fill in the username of who you want to talk to and hit *Connect*
 
 
 ---

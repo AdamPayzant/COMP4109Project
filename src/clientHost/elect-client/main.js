@@ -7,6 +7,7 @@ const {chatHistory} = require('./modules/chatHistoryClass.js')
 const fs = require('fs')
 const grpcLibrary = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
+const rsaLib = require('node-rsa');
 
 
 /*##################################*\
@@ -20,6 +21,8 @@ let UIView = null
 let outbound = null;
 let chat = null;
 let timer = null;
+let rsaKey = null;
+let rsaHostKey = null;
 
 
 /*##################################*\
@@ -65,21 +68,22 @@ app.on('activate', () => {
 ipcMain.on('chatSent', (event, chatText)=>{
   SendText(chatText)
   //Send to Host Here
+  /*
   if(outbound != null)
-    outbound.SendText({targetUser:otherUser.name, message:[sanatizeText(chatText)], token:config.key}, function(err, responce){
+    outbound.SendText({targetUser:otherUser.name, message:[rsaKey.encryptPrivate(sanatizeText(chatText))], token:config.key}, function(err, responce){
       if(err){
         console.log(err)
         dissconnectFromHost()
       }
       console.log(responce);
     });
-
+  */
 })
 
 ipcMain.on('deleteMSG', (event, msgID)=>{
   deleteMessage(msgID)
   //Send to Host Here
-
+  /*
   if(outbound != null)
     outbound.DeleteMessage({user:otherUser.name, messageID:int(msgID), token:config.key}, function(err, responce){
       if(err){
@@ -88,6 +92,8 @@ ipcMain.on('deleteMSG', (event, msgID)=>{
       }
       console.log(responce);
     })
+
+  */
 })
 
 ipcMain.on('loginAttempt',(event, loginData)=>{
@@ -276,8 +282,8 @@ function SendText(chatText) {
       UIView.webContents.send('inBoundChat', msgData)
     }
     
-    if(outbound != null){
-      outbound.send({username:config.name, text:sanatizeText(chatText)}, function(err, responce){
+    if(outbound != null && rsaKey != null){
+      outbound.send({username:config.name, text:rsaKey.encryptPrivate(sanatizeText(chatText))}, function(err, responce){
         if(err){
           console.log(err)
           dissconnectFromHost()
@@ -381,8 +387,20 @@ function loadChatData(id){
 
   console.log(tempHist);
 
+
+  for (s of chatHistory){
+
+
+  }
+
+
+
   if(tempHist.convo != null){
     chat = new chatHistory(0, null, tempHist.convo, tempHist.convo.sort((a,b)=>{ return a < b})[0].order + 1)
+
+  for (s of chatHistory.messages.length()){
+    chatHistory.messages[s] = rsaHostKey.decrypt(chatHistory.messages[s]);
+  }
     otherUser = {name:id, indentifier:"5672", publicKey:"", ip: "127.0.0.1", port:"9090", status: "Online"};
   } else {
     return
@@ -431,7 +449,40 @@ function populateAddressBook(searchValue, searchType){
 \*##################################*/
 function start(){
 
-  config = JSON.parse(fs.readFileSync("./userData.json"))
+  config = JSON.parse(fs.readFileSync("./userData.json"));
+
+  rsaKey = new rsaLib({b:1024});
+  
+
+  try {
+
+    let rsaDataD = fs.readFileSync("./rsaKeyPublic.pem");
+    rsaKey.importKey(rsaDataD, "pkcs1-private-pem");
+
+  
+  } catch (error) {
+
+    rsaKey.generateKeyPair(1024, 65537);
+    fs.writeFileSync("./rsaKeyPrivate.pem", rsaKey.exportKey("pkcs1-private-pem"));
+    fs.writeFileSync("./rsaKeyPublic.pem", rsaKey.exportKey("pkcs1-public-pem"));
+
+  }
+
+  rsaHostKey = new rsaLib({b:1024});
+
+  try{
+
+    let rsaDataH = fs.readFileSync("./rsaKeyPublicHost.pem");
+    rsaHostKey.importKey(rsaDataH, "pkcs1-public-pem");
+
+
+  } catch (error) {
+
+    console.error('Public Key for host not found!!!');
+    //app.exit();
+  }
+  
+
 
 }start();
 
@@ -460,7 +511,7 @@ function createNewHostConnection(credentials){
 
     const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs.clientHost;
     outbound = new clientConstructor(networkAddr, grpcLibrary.credentials.createInsecure());
-    outbound.ReKey({token:config.key}, function(err, responce){
+    outbound.ReKey({token:rsaKey.exportKey("pkcs1-public-pem")}, function(err, responce){
       if(err){
         console.log(err)
         dissconnectFromHost()
