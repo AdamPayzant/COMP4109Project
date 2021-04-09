@@ -2,7 +2,7 @@
 	"PublicKeyPath": "./client_public.pem",
 	"PrivateKeyPath": "./client_private.pem",
 	"CertDir": "./certs",
-	"DataBasePath": "./data2.db",
+	"DataBasePath": "./data.db",
 	"ServerIP": ":8080",
 	"Username": "Tester",
 	"CentrialServerIP": "localHost:9090",
