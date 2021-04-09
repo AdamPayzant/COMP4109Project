@@ -68,7 +68,13 @@ ipcMain.on('chatSent', (event, chatText)=>{
   SendText(chatText)
   //Send to Host Here
   if(outbound != null)
-    outbound.SendText({targetUser:otherUser.name, message:[sanatizeText(chatText)], token:communicationToken});
+    outbound.SendText({targetUser:otherUser.name, message:[sanatizeText(chatText)], token:communicationToken}, function(err, responce){
+      if(err){
+        console.log(err)
+        dissconnectFromHost()
+      }
+      console.log(responce);
+    });
 
 })
 
@@ -77,7 +83,13 @@ ipcMain.on('deleteMSG', (event, msgID)=>{
   //Send to Host Here
 
   if(outbound != null)
-    outbound.DeleteMessage({user:userData.name, messageID:int(msgID), token:communicationToken});
+    outbound.DeleteMessage({user:userData.name, messageID:int(msgID), token:communicationToken}, function(err, responce){
+      if(err){
+        console.log(err)
+        dissconnectFromHost()
+      }
+      console.log(responce);
+    })
 })
 
 ipcMain.on('loginAttempt',(event, loginData)=>{
@@ -266,7 +278,13 @@ function SendText(chatText) {
     }
     
     if(outbound != null){
-      outbound.send({username:userData.name, text:sanatizeText(chatText)});
+      outbound.send({username:userData.name, text:sanatizeText(chatText)}, function(err, responce){
+        if(err){
+          console.log(err)
+          dissconnectFromHost()
+        }
+        console.log(responce);
+      })
     }
     
 }
@@ -353,7 +371,13 @@ function loadChatData(id){
   
   //Replace user getting data from other source
   if(outbound != null){
-    tempHist = outbound.GetConversation({token:communicationToken, username:id})
+    tempHist = outbound.GetConversation({token:communicationToken, username:id}, function(err, responce){
+      if(err){
+        console.log(err)
+        dissconnectFromHost()
+      }
+      console.log(responce);
+    })
   }
 
   console.log(tempHist);
@@ -445,14 +469,22 @@ function createNewHostConnection(credentials){
 
     const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs.clientHost;
     outbound = new clientConstructor(networkAddr, grpcLibrary.credentials.createInsecure());
-    
-
-    UIView.webContents.send('hostConnect');
+    outbound.ReKey({token:communicationToken}, function(err, responce){
+      if(err){
+        console.log(err)
+        dissconnectFromHost()
+        throw err
+      }
+      console.log(responce);
+    });
 
   } catch (error) {
     console.log(error);
     UIView.webContents.send('userConnection', {status:"Failed", message:"host Login failed"});
+    return;
   }
+
+  UIView.webContents.send('hostConnect');
 
 }
 
