@@ -21,8 +21,8 @@ import (
 	"strconv"
 	"time"
 
-	pb_host "pb_host"
-	// pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
+	// pb_host "pb_host"
+	pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
 	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
 
 	"google.golang.org/grpc"
