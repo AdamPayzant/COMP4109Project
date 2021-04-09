@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 
+	"crypto/rsa"
 	"crypto/x509"
 
 	"google.golang.org/grpc"
@@ -24,10 +25,11 @@ type server struct {
 }
 
 func (s *server) Register(ctx context.Context, reg *pb_server.UserReg) (*pb_server.Status, error) {
-	key, err := x509.ParsePKCS1PublicKey(reg.GetKey())
+	PKIXkey, err := x509.ParsePKIXPublicKey(reg.GetKey())
 	if err != nil {
 		return &pb_server.Status{Status: 2}, err
 	}
+	key := PKIXkey.(*rsa.PublicKey)
 	err = addUser(reg.GetUsername(), key, reg.GetIp())
 	if err != nil {
 		return &pb_server.Status{Status: 1}, err
@@ -65,10 +67,11 @@ func (s *server) UpdateKey(ctx context.Context, req *pb_server.KeyUpdate) (*pb_s
 		return &pb_server.Status{Status: 1}, err
 	}
 
-	key, err := x509.ParsePKCS1PublicKey(req.GetNewKey())
+	PKIXkey, err := x509.ParsePKIXPublicKey(req.GetNewKey())
 	if err != nil {
 		return &pb_server.Status{Status: 3}, errors.New("non key passed as key")
 	}
+	key := PKIXkey.(*rsa.PublicKey)
 	err = updateKey(req.Username, key)
 	if err != nil {
 		return &pb_server.Status{Status: 2}, err

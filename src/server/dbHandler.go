@@ -78,19 +78,19 @@ func connect() error {
 		log.Fatal(err)
 		return err
 	}
-	c = `
-		CREATE TRIGGER IF NOT EXISTS userDel
-			AFTER DELETE ON users FOR EACH ROW
-		BEGIN
-			DELETE FROM tokens
-			WHERE userID=OLD.userID;
-		END;
-	`
-	_, err = db.Exec(string(c))
-	if err != nil {
-		log.Fatal(err)
-		return err
-	}
+	// c = `
+	// 	CREATE TRIGGER IF NOT EXISTS userDel
+	// 		AFTER DELETE ON users FOR EACH ROW
+	// 	BEGIN
+	// 		DELETE FROM tokens
+	// 		WHERE userID=OLD.userID;
+	// 	END;
+	// `
+	// _, err = db.Exec(string(c))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// 	return err
+	// }
 	fmt.Println("Connected to db")
 	return nil
 }
@@ -106,8 +106,9 @@ func connect() error {
 		error - If there's an error adding the user to the system
 */
 func addUser(username string, publickey *rsa.PublicKey, ip string) error {
+	keyBytes, _ := x509.MarshalPKIXPublicKey(publickey)
 	_, err := db.Exec("INSERT INTO users (username, pubKey, ip) VALUES(?, ?, ?)",
-		username, x509.MarshalPKCS1PublicKey(publickey), ip)
+		username, keyBytes, ip)
 	if err != nil {
 		return err
 	}
@@ -134,10 +135,11 @@ func addToken(username string) ([]byte, error) {
 		return nil, err
 	}
 
-	pubKey, err := x509.ParsePKCS1PublicKey(key)
+	PKIXpubKey, err := x509.ParsePKIXPublicKey(key)
 	if err != nil {
 		return nil, err
 	}
+	pubKey := PKIXpubKey.(*rsa.PublicKey)
 
 	// Generates a 64 character long token
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -229,7 +231,8 @@ func updateIP(username string, ip string) error {
 		error - Reports if an error occured
 */
 func updateKey(username string, publicKey *rsa.PublicKey) error {
-	_, err := db.Exec("UPDATE users SET pubKey=? WHERE username=?", x509.MarshalPKCS1PublicKey(publicKey), username)
+	keyBytes, _ := x509.MarshalPKIXPublicKey(publicKey)
+	_, err := db.Exec("UPDATE users SET pubKey=? WHERE username=?", keyBytes, username)
 	return err
 }
 
