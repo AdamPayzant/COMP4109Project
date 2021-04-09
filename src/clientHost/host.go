@@ -41,7 +41,6 @@ type ClientHostSettings struct {
 	ServerIP         string `json:"serverIP"`
 	Username         string `json:"username"`
 	CentrialServerIP string `json:"centrialServerIP"`
-	TokenPath        string `json:"tokenPath"`
 }
 
 var settings ClientHostSettings
