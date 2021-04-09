@@ -5,6 +5,5 @@
 	"DataBasePath": "./data.db",
 	"ServerIP": ":8080",
 	"Username": "Tester",
-	"CentrialServerIP": "localHost:9090",
-	"TokenPath" : "./Token.txt"
+	"CentrialServerIP": "localHost:9090"
 }
