@@ -12,15 +12,13 @@ const protoLoader = require('@grpc/proto-loader');
 /*##################################*\
   Internal data
 \*##################################*/
-let userData = null
-let hostConnectionData = null
+let config = null;
 let otherUser = null
 let addressBook = []
 let chatHistories = {}
 let UIView = null
 let outbound = null;
-let chat = null
-let communicationToken = "123asdasdasdasdas45678"
+let chat = null;
 let timer = null;
 
 
@@ -68,7 +66,7 @@ ipcMain.on('chatSent', (event, chatText)=>{
   SendText(chatText)
   //Send to Host Here
   if(outbound != null)
-    outbound.SendText({targetUser:otherUser.name, message:[sanatizeText(chatText)], token:communicationToken}, function(err, responce){
+    outbound.SendText({targetUser:otherUser.name, message:[sanatizeText(chatText)], token:config.key}, function(err, responce){
       if(err){
         console.log(err)
         dissconnectFromHost()
@@ -83,7 +81,7 @@ ipcMain.on('deleteMSG', (event, msgID)=>{
   //Send to Host Here
 
   if(outbound != null)
-    outbound.DeleteMessage({user:userData.name, messageID:int(msgID), token:communicationToken}, function(err, responce){
+    outbound.DeleteMessage({user:otherUser.name, messageID:int(msgID), token:config.key}, function(err, responce){
       if(err){
         console.log(err)
         dissconnectFromHost()
@@ -137,14 +135,15 @@ ipcMain.on('requestChatUName', (event, id)=>{
 })
 
 ipcMain.on('updateUser', (event, name)=>{
-  userData.name = name;
-  fs.writeFileSync("./userData.json", JSON.stringify(userData))
+  config.name = name;
+  fs.writeFile("./userData.json", JSON.stringify(config),(err)=>{})
 })
 
 ipcMain.on('connectToHost', (event, networkObject)=>{
 
-  hostConnectionData.ip = networkObject.ip
-  hostConnectionData.port = networkObject.port
+  config.ip = networkObject.ip
+  //config.port = networkObject.port
+  fs.writeFile("./userData.json", JSON.stringify(config),(err)=>{})
   createNewHostConnection(null);
 
 })
@@ -218,7 +217,7 @@ function fetchData(requestOBJ){
   switch(requestOBJ){
 
     case 'connectionData':
-      return hostConnectionData
+      return config
 
     case 'activeChat':
       return chat
@@ -227,7 +226,7 @@ function fetchData(requestOBJ){
       return 2    
       
     case 'userData':
-      return userData
+      return config
 
     case 'otherClientName':
       return otherUser.name || "U. N. Owen"
@@ -238,25 +237,25 @@ function fragmentRouter(fragmentName){
   switch(fragmentName){
 
     case 'userData':
-      return fragmentStreamlined("chat/userData.html", userData)
+      return fragmentStreamlined("chat/userData.html", config)
 
     case 'otherUserData':
       return fragmentStreamlined("chat/otherUserData.html", otherUser)
 
     case 'hostData':
-      return fragmentStreamlined("chat/hostData.html", hostConnectionData)
+      return fragmentStreamlined("chat/hostData.html", config)
 
     case 'hostConnectionMenu':
-      return fragmentStreamlined("menu/hostConnection.html", hostConnectionData)
+      return fragmentStreamlined("menu/hostConnection.html", config)
 
     case 'hostConnectionForm':
-      return fragmentStreamlined("menu/hostConnectForm.html", hostConnectionData)
+      return fragmentStreamlined("menu/hostConnectForm.html", config)
   
     case 'userInfoMenu':
-      return fragmentStreamlined("menu/userInfoSection.html", userData)
+      return fragmentStreamlined("menu/userInfoSection.html", config)
 
     case 'chatRequestForm':
-        return fragmentStreamlined("menu/chatRequestForm.html", userData)
+        return fragmentStreamlined("menu/chatRequestForm.html", config)
   }
 
   return ""
@@ -278,7 +277,7 @@ function SendText(chatText) {
     }
     
     if(outbound != null){
-      outbound.send({username:userData.name, text:sanatizeText(chatText)}, function(err, responce){
+      outbound.send({username:config.name, text:sanatizeText(chatText)}, function(err, responce){
         if(err){
           console.log(err)
           dissconnectFromHost()
@@ -371,7 +370,7 @@ function loadChatData(id){
   
   //Replace user getting data from other source
   if(outbound != null){
-    tempHist = outbound.GetConversation({token:communicationToken, username:id}, function(err, responce){
+    tempHist = outbound.GetConversation({token:config.key, username:id}, function(err, responce){
       if(err){
         console.log(err)
         dissconnectFromHost()
@@ -432,15 +431,7 @@ function populateAddressBook(searchValue, searchType){
 \*##################################*/
 function start(){
 
-  userData = JSON.parse(fs.readFileSync("./userData.json"))
-
-  hostConnectionData = {
-    ip : "localhost",
-    port : "9090"
-  };
-
-
-
+  config = JSON.parse(fs.readFileSync("./userData.json"))
 
 }start();
 
@@ -453,7 +444,7 @@ function createNewHostConnection(credentials){
   if(outbound != null)
     dissconnectFromHost();
 
-  let networkAddr = "" + hostConnectionData.ip + ":" + hostConnectionData.port || "127.0.0.1:9090";
+  let networkAddr = "" + config.ip + ":" + config.port || "127.0.0.1:9091";
 
   const packageDefinition = protoLoader.loadSync('./modules/proto/host.proto', {
     keepCase: true,
@@ -469,13 +460,14 @@ function createNewHostConnection(credentials){
 
     const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs.clientHost;
     outbound = new clientConstructor(networkAddr, grpcLibrary.credentials.createInsecure());
-    outbound.ReKey({token:communicationToken}, function(err, responce){
+    outbound.ReKey({token:config.key}, function(err, responce){
       if(err){
         console.log(err)
         dissconnectFromHost()
         throw err
       }
       console.log(responce);
+      UIView.webContents.send('hostConnect');
     });
 
   } catch (error) {
@@ -484,7 +476,7 @@ function createNewHostConnection(credentials){
     return;
   }
 
-  UIView.webContents.send('hostConnect');
+  
 
 }
 

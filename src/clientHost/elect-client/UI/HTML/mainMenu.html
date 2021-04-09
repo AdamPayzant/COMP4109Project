@@ -35,8 +35,8 @@
                 <option value="public key"> Public Key </option>
             </select>
 
-            <button type="button" style="grid-column: 4; grid-row: 2;" onclick="showConnectionArea()"> One Time Connection </button>
-            <button type="button" style="grid-column: 5; grid-row: 2;" onclick="showConnectionArea()" disabled> New Contact </button>
+            <button id="oneConnect" type="button" style="grid-column: 4; grid-row: 2;" onclick="showConnectionArea()" disabled> One Time Connection </button>
+            <button id="addContact" type="button" style="grid-column: 5; grid-row: 2;" onclick="showConnectionArea()" disabled> New Contact </button>
         
         </div></div>
 
@@ -135,7 +135,7 @@
             networkObject.ip = document.getElementById('ipHost').value
             networkObject.port = document.getElementById('portHost').value
 
-            ipcRenderer.send('connectToHost', networkObject);
+            ipcRenderer.sendSync('connectToHost', networkObject);
 
         }
         
@@ -149,10 +149,12 @@
 
         ipcRenderer.on('hostDisconnect', (event)=>{
             document.getElementById('area2').innerHTML = ipcRenderer.sendSync('renderFrament','hostConnectionForm')
+            document.getElementById('oneConnect').disabled = true
         })
 
         ipcRenderer.on('hostConnect', (event)=>{
             document.getElementById('area2').innerHTML = ipcRenderer.sendSync('renderFrament','hostConnectionMenu')
+            document.getElementById('oneConnect').disabled = false
         })
 
         start()

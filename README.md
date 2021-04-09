@@ -28,6 +28,10 @@ Once all of this setup is complete, the server is ready.
 
 ### Client
 
+The client was built using electron. It should run on linux, mac, and windows. The current implimentation has the user 
+run the client using electron. Future plans include distributing an client exported as a full electron application.
+(Run from an executable and all libraries are included in the file).
+
 ---
 
 ## Building
@@ -58,6 +62,14 @@ All variables can be found at the top of the `server.go` and `dbhandler.go` file
 
 ### Client
 
+
+To build the client, the system must have node v14.0.0 or higher
+Navigate the `./src/clientHost/elec-client/` directory and run:
+
+```
+npm install
+```
+
 ---
 
 ## Running
@@ -75,6 +87,25 @@ Once the setup has been complete, the server is started by the following single 
 ---
 
 ### Client
+
+##### Startup
+
+    Once the node modules are installed, you can start the program run:
+    ```
+    nmp start
+    ```
+    The client can be configured using by modifiying the file `userData.json` 
+
+
+##### Operation
+
+    Once the client has started enter the address for the host in the 
+    center field of the host section and press connect. This should connect 
+    you to the host server, if not an error will appear.
+
+    Once connected, to start chatting press on the  *One time Connection* button.
+    Then fill in the username of who you want to talk to and hit *Connect*
+
 
 ---
 
