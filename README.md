@@ -23,7 +23,22 @@ Additionally port 9090 must be free for the server to use.
 Once all of this setup is complete, the server is ready.
 
 ### Client Host
-
+The client host has only been validated in windows, though it is likely compatible with other OS's.s
+The client host can be either built from source or run from a precompiled binary.
+The client host needs some external files to be created before running.
+Client Host will need:
+    A JSON settings file that contains: 
+        "PublicKeyPath": "<client public key path>.pem",
+        "PrivateKeyPath": "<client public key path>.pem",
+        "CertDir": "<Dir of a file that contains certifications>",
+        "DataBasePath": "<the sqlite database path>",
+        "ServerIP": "<The IP of the host mechine i.e LocalHost:<ports>>",
+        "Username": "<User name>",
+        "CentrialServerIP": "<The ip of the centrial server>"
+    A file that contains the certifications that MUST have:
+        server-cert.pem           cert for clientHost
+        server-key.pem            keu for clientHost
+        ca-centralServerCert.pem  CA of central server
 ---
 
 ### Client
@@ -57,6 +72,19 @@ Any changes you want to do to the system (like changing the password for the DB)
 All variables can be found at the top of the `server.go` and `dbhandler.go` files under `const`.
 
 ### Client Host
+To build the client host, the system must have golang v1.16.
+Navigate the `./src/protos/` directory and run:
+
+```
+make install
+```
+
+Once the protocols are install, navigate to the `./src/clientHost/` and run:
+
+```
+go build
+```
+
 
 ---
 
