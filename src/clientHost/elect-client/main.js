@@ -23,6 +23,7 @@ let chat = null;
 let timer = null;
 let rsaKey = null;
 let rsaHostKey = null;
+let configFilePath = "."
 
 
 /*##################################*\
@@ -41,6 +42,8 @@ function createWindow () {
       contextIsolation: false
     }   
   })
+  start();
+
   UIView = win;
   //win.setMenu(null)
   changeView('menu')
@@ -142,14 +145,14 @@ ipcMain.on('requestChatUName', (event, id)=>{
 
 ipcMain.on('updateUser', (event, name)=>{
   config.name = name;
-  fs.writeFile("./userData.json", JSON.stringify(config),(err)=>{})
+  fs.writeFile(configFilePath+"/userData.json", JSON.stringify(config),(err)=>{})
 })
 
 ipcMain.on('connectToHost', (event, networkObject)=>{
 
   config.ip = networkObject.ip
   //config.port = networkObject.port
-  fs.writeFile("./userData.json", JSON.stringify(config),(err)=>{})
+  fs.writeFile(configFilePath+"/userData.json", JSON.stringify(config),(err)=>{})
   createNewHostConnection(null);
 
 })
@@ -377,12 +380,16 @@ function loadChatData(id){
   //Replace user getting data from other source
   if(outbound != null){
     tempHist = outbound.GetConversation({token:config.key, username:id}, function(err, responce){
+      console.log(responce);
+      
       if(err){
         console.log(err)
         dissconnectFromHost()
       }
-      console.log(responce);
     })
+
+
+
   }
 
   console.log(tempHist);
@@ -392,8 +399,6 @@ function loadChatData(id){
 
 
   }
-
-
 
   if(tempHist.convo != null){
     chat = new chatHistory(0, null, tempHist.convo, tempHist.convo.sort((a,b)=>{ return a < b})[0].order + 1)
@@ -449,42 +454,53 @@ function populateAddressBook(searchValue, searchType){
 \*##################################*/
 function start(){
 
-  config = JSON.parse(fs.readFileSync("./userData.json"));
+  configFilePath = process.argv[2] || configFilePath;
 
-  rsaKey = new rsaLib({b:1024});
+  if(!fs.statSync(configFilePath).isDirectory()){
+    configFilePath = ".";
+  }
   
-
   try {
-
-    let rsaDataD = fs.readFileSync("./rsaKeyPublic.pem");
-    rsaKey.importKey(rsaDataD, "pkcs1-private-pem");
-
-  
+    config = JSON.parse(fs.readFileSync(configFilePath+"/userData.json"));
   } catch (error) {
-
-    rsaKey.generateKeyPair(1024, 65537);
-    fs.writeFileSync("./rsaKeyPrivate.pem", rsaKey.exportKey("pkcs1-private-pem"));
-    fs.writeFileSync("./rsaKeyPublic.pem", rsaKey.exportKey("pkcs1-public-pem"));
-
+    config = {"key":"101","name":"Default","ip":"localhost","port":"9091"}
+    fs.writeFile(configFilePath+"/userData.json", JSON.stringify(config),(err)=>{})
   }
+  
 
-  rsaHostKey = new rsaLib({b:1024});
+  rsaKey = new rsaLib({b:2048});
 
-  try{
+  fs.readFile(configFilePath+"/rsaKeyPrivate.pem",(err, data)=>{
 
-    let rsaDataH = fs.readFileSync("./rsaKeyPublicHost.pem");
-    rsaHostKey.importKey(rsaDataH, "pkcs1-public-pem");
+    if(err){
+      console.log(err)
+
+      rsaKey.generateKeyPair(2048, 65537);
+      fs.writeFile(configFilePath+"/rsaKeyPrivate.pem", rsaKey.exportKey("pkcs8-private-pem"), (err)=>{});
+      fs.writeFile(configFilePath+"/rsaKeyPublic.pem", rsaKey.exportKey("pkcs8-public-pem"), (err)=>{});
+
+    } else {
+
+      rsaKey.importKey(data, "pkcs8-private-pem");
+      
+    }
+  });
 
 
-  } catch (error) {
+  fs.readFile(configFilePath + "/client_public.pem", (err, data)=>{
+      if(err){
+        console.error(err);
+        return;
+      }
+      rsaHostKey = new rsaLib(data, "pkcs8-public-pem");
 
-    console.error('Public Key for host not found!!!');
+    });
+
     //app.exit();
-  }
   
 
 
-}start();
+}
 
 /*##################################*\
   grpc Functions
@@ -511,6 +527,7 @@ function createNewHostConnection(credentials){
 
     const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs.clientHost;
     outbound = new clientConstructor(networkAddr, grpcLibrary.credentials.createInsecure());
+    /*
     outbound.ReKey({token:rsaKey.exportKey("pkcs1-public-pem")}, function(err, responce){
       if(err){
         console.log(err)
@@ -520,7 +537,7 @@ function createNewHostConnection(credentials){
       console.log(responce);
       UIView.webContents.send('hostConnect');
     });
-
+  */
   } catch (error) {
     console.log(error);
     UIView.webContents.send('userConnection', {status:"Failed", message:"host Login failed"});
