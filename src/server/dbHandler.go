@@ -21,7 +21,7 @@ var db *sql.DB = nil
 
 const (
 	timeOut = 900000000000 // 15 minutes in nanoseconds
-	dbName  = "smvs:password@tcp(localhost:3306)/smvsServer"
+	dbName  = "smvs:password@tcp(localhost:3306)/smvsserver"
 )
 
 type User struct {
@@ -79,19 +79,20 @@ func connect() error {
 		log.Fatal(err)
 		return err
 	}
-	// c = `
-	// 	CREATE TRIGGER IF NOT EXISTS userDel
-	// 		AFTER DELETE ON users FOR EACH ROW
-	// 	BEGIN
-	// 		DELETE FROM tokens
-	// 		WHERE userID=OLD.userID;
-	// 	END;
-	// `
-	// _, err = db.Exec(string(c))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	return err
-	// }
+
+	c = `
+		CREATE TRIGGER IF NOT EXISTS userDel
+			AFTER DELETE ON users FOR EACH ROW
+		BEGIN
+			DELETE FROM tokens
+			WHERE userID=OLD.userID;
+		END;
+	`
+	_, err = db.Exec(string(c))
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
 	fmt.Println("Connected to db")
 	return nil
 }
