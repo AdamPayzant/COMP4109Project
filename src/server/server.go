@@ -38,8 +38,8 @@ func (s *server) Register(ctx context.Context, reg *pb_server.UserReg) (*pb_serv
 }
 
 func (s *server) GetToken(ctx context.Context, req *pb_server.Username) (*pb_server.AuthKey, error) {
-	token, err := addToken(req.Username)
 
+	token, err := addToken(req.Username)
 	if err != nil {
 		return nil, err
 	}

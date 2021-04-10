@@ -68,5 +68,32 @@ function fragmentStreamlined(filename, data){
 
 }
 
+function stringToByteArry(input){
+    let array = [];
+
+    for (var i = 0; i < input.length; ++i) {
+        var code = input.charCodeAt(i);
+        array = array.concat([code]);
+
+        
+    }
+
+    return array
+}
+
+function ByteArryTostring(input){
+    let str = "";
+
+    for (b of input){
+        str.concat(String.fromCharCode(b))
+    }
+
+    return str
+}
+
+
 exports.fragmentCompletionFunction = fragmentCompletionFunction;
 exports.fragmentStreamlined = fragmentStreamlined;
+
+exports.stringToByteArry = stringToByteArry;
+exports.ByteArryTostring = ByteArryTostring;

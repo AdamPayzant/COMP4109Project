@@ -2,7 +2,7 @@
   Required Libraries
 \*##################################*/
 const {ipcMain, app, BrowserWindow, clipboard, dialog} = require('electron');
-const {sanatizeText, passwordCheckDebug, fragmentStreamlined} = require('./modules/utilityFunctions.js');
+const {sanatizeText, stringToByteArry, ByteArryTostring, fragmentStreamlined} = require('./modules/utilityFunctions.js');
 const {chatHistory} = require('./modules/chatHistoryClass.js')
 const fs = require('fs')
 const grpcLibrary = require('@grpc/grpc-js');
@@ -399,7 +399,6 @@ function loadChatData(id){
     //Decrypt 
     processedList.push(s)
 
-
   }
 
   if(tempHist.convo != null){
@@ -409,7 +408,7 @@ function loadChatData(id){
     chatHistory.messages[s] = rsaHostKey.decrypt(chatHistory.messages[s]);
   }
     otherUser = {name:id, indentifier:"5672", publicKey:"", ip: "127.0.0.1", port:"9090", status: "Online"};
-    
+
   } else {
     return
   }
@@ -494,11 +493,13 @@ function start(){
 
   try {
     config = JSON.parse(fs.readFileSync(configFilePath+"/userData.json"));
-  } catch (error) {
-    config = {"key":"101","name":"Default","ip":"localhost","port":"9091"}
-    fs.writeFile(configFilePath+"/userData.json", JSON.stringify(config),(err)=>{})
+  } catch (err){
+
   }
+
+  config = {key: config.key ||"101",name: config.name ||"Default",ip: config.ip ||"localhost",port: config.port ||"9091", centralserverIP: config.centralserverIP || "localhost:8080"}
   
+  fs.writeFileSync(configFilePath+"/userData.json", JSON.stringify(config),(err)=>{})
 
   rsaKey = new rsaLib();
 
@@ -545,23 +546,40 @@ function createNewHostConnection(credentials){
 
   let networkAddr = "" + config.ip + ":" + config.port || "127.0.0.1:9091";
 
-  const packageDefinition = protoLoader.loadSync('./modules/proto/host.proto', {
-    keepCase: true,
-    longs: String,
-    enums: String,
-    defaults: true,
-    oneofs: true
-  });
-
   try {
+    let packageDefinition = protoLoader.loadSync('./modules/proto/host.proto', {
+      keepCase: true,
+      longs: String,
+      enums: String,
+      defaults: true,
+      oneofs: true
+    });
 
     /* Found an example of a chat application https://techblog.fexcofts.com/2018/07/20/grpc-nodejs-chat-example/*/
-
     const clientConstructor = grpcLibrary.loadPackageDefinition(packageDefinition).smvs.clientHost;
     outbound = new clientConstructor(networkAddr, grpcLibrary.credentials.createInsecure());
 
-    console.log(outbound.Dial(networkAddr, grpcLibrary.credentials.createInsecure()));
+    packageDefinition = protoLoader.loadSync('./modules/proto/server.proto', {
+      keepCase: true,
+      longs: String,
+      enums: String,
+      defaults: true,
+      oneofs: true
+    });
 
+    let cServer = new grpcLibrary.loadPackageDefinition(packageDefinition).smvs.Server;
+    let cConnection = new cServer(config.centralserverIP, grpcLibrary.credentials.createInsecure());
+
+    cConnection.Register({username: config.name, key:stringToByteArry(rsaKey.exportKey("pkcs8-public-pem")), ip:"localhost" },(err, responce)=>{
+      console.log(err);
+      console.log(responce);
+    });
+
+
+    UIView.webContents.send('hostConnect');
+
+    //console.log(outbound.Dial(networkAddr, grpcLibrary.credentials.createInsecure()));
+/*
     outbound.ReKey({token:rsaKey.exportKey("pkcs1-public-pem")}, function(err, responce){
       if(err){
         console.log(err)
@@ -571,7 +589,7 @@ function createNewHostConnection(credentials){
       console.log(responce);
       UIView.webContents.send('hostConnect');
     });
-
+*/
   } catch (error) {
     console.log(error);
     UIView.webContents.send('userConnection', {status:"Failed", message:"host Login failed"});
