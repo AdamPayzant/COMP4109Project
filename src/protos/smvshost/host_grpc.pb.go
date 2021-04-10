@@ -19,8 +19,8 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ClientHostClient interface {
 	ReKey(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Status, error)
-	DeleteMessage(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*Status, error)
 	// Messaging calls
+	DeleteMessage(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*Status, error)
 	SendText(ctx context.Context, in *ClientText, opts ...grpc.CallOption) (*Status, error)
 	RecieveText(ctx context.Context, in *H2HText, opts ...grpc.CallOption) (*Status, error)
 	GetConversation(ctx context.Context, in *Username, opts ...grpc.CallOption) (*Conversation, error)
@@ -84,8 +84,8 @@ func (c *clientHostClient) GetConversation(ctx context.Context, in *Username, op
 // for forward compatibility
 type ClientHostServer interface {
 	ReKey(context.Context, *Token) (*Status, error)
-	DeleteMessage(context.Context, *DeleteReq) (*Status, error)
 	// Messaging calls
+	DeleteMessage(context.Context, *DeleteReq) (*Status, error)
 	SendText(context.Context, *ClientText) (*Status, error)
 	RecieveText(context.Context, *H2HText) (*Status, error)
 	GetConversation(context.Context, *Username) (*Conversation, error)

@@ -1,9 +1,10 @@
 {
-	"PublicKeyPath": "./client_public.pem",
-	"PrivateKeyPath": "./client_private.pem",
-	"CertDir": "./certs",
-	"DataBasePath": "./data.db",
-	"ServerIP": ":8080",
-	"Username": "Tester",
-	"CentrialServerIP": "localHost:9090"
+	"ClientPublicKeyPath": "./keys/client_public.pem",
+	"ServerCert": "./certs/server-cert.pem",
+	"ServerKey": "./certs/server-key.pem",
+	"DB": "smvs:password@tcp(localhost:3306)/smvsclienthost",
+	"ServerIP": "localhost:8081",
+	"Username": "Default",
+	"CentrialServerIP": "localHost:9090",
+	"CentrialServerCACert": "./certs/ca-centralServerCert.pem"
 }
