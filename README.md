@@ -50,7 +50,7 @@ If using the default settings, a `Mariadb` server must be running locally on por
 This DB must have the User, Password, and database specified in the `"DB"` string in the settings file.
 For instance the current Default settings are:
 ```
-    "ClientPublicKeyPath": "./test/keys/client_public.pem",
+	"ClientPublicKeyPath": "./test/keys/client_public.pem",
 	"ServerCert": "./certs/server-cert.pem",
 	"ServerKey": "./certs/server-key.pem",
 	"DB": "smvs:password@tcp(localhost:3306)/smvsclienthost",
