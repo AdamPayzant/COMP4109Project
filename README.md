@@ -66,7 +66,7 @@ Then the database must have the user `smvs` with the password `"password"` and t
 For the Dufault `"DB"` setting and a local database server, running the following query will initialize the database.
 ```
 CREATE USER 'smvs'@localhost IDENTIFIED BY 'password';
-CREATE DATABASE smvsclienhost;
+CREATE DATABASE smvsclienthost;
 ```
 ---
 
