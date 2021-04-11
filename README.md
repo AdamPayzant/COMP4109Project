@@ -18,28 +18,53 @@ A more complete description of this system can be found in `Proposal/proposal.pd
 The server has only been validated in Linux, though it is likely compatible with other OS's.s
 The server can be either built from source or run from a precompiled binary.
 If using the default settings, a Mariadb server must be running locally on port 3306. 
-This DB must have a user named smvs with the password "password" and have a database named "smvsServer".
+This DB must have a user named smvs with the password "password" and have a database named "smvsserver".
+For a local database server, running the following query will initialize the database.
+```
+CREATE USER 'smvs'@localhost IDENTIFIED BY 'password';
+CREATE DATABASE smvsserver
+```
 Additionally port 9090 must be free for the server to use.
 Once all of this setup is complete, the server is ready.
 
 ### Client Host
-The client host has only been validated in windows, though it is likely compatible with other OS's.s
+The client host has only been validated in windows, though it is likely compatible with other OS's.
 The client host can be either built from source or run from a precompiled binary.
 The client host needs some external files to be created before running.
 ```
 Client Host will need:
     A JSON settings file that contains: 
-        "PublicKeyPath": "<client public key path>.pem",
-        "PrivateKeyPath": "<client public key path>.pem",
-        "CertDir": "<Dir of a file that contains certifications>",
-        "DataBasePath": "<the sqlite database path>",
+        "ClientPublicKeyPath": "<client public key path>.pem",
+        "ServerCert": "<Path for the clienthost cert>",
+        "ServerKey": "<Path for the clienthost server-key>"
+        "DB": "<the name of the DB>",
         "ServerIP": "<The IP of the host mechine i.e LocalHost:<ports>>",
-        "Username": "<User name>",
-        "CentrialServerIP": "<The ip of the centrial server>"
-    A file that contains the certifications that MUST have:
-        server-cert.pem           cert for clientHost
-        server-key.pem            keu for clientHost
-        ca-centralServerCert.pem  CA of central server
+        "Username": "<Username>",
+        "CentralServerIP": "<The ip of the centrial server>",
+        "CentralServerCACert": "<The CA cert for the central server>",
+        "token": "<The token to be sigend to verify the client - clenthost interactions>"
+```
+
+The client host uses a database that needs to be setup.
+If using the default settings, a Mariadb server must be running locally on port 3306. 
+This DB must have the User, Password, and database specified in the "DB" string in the settings file.
+For instance the current Dufault settings are:
+```
+    "ClientPublicKeyPath": "./test/keys/client_public.pem",
+	"ServerCert": "./certs/server-cert.pem",
+	"ServerKey": "./certs/server-key.pem",
+	"DB": "smvs:password@tcp(localhost:3306)/smvsclienthost",
+	"ServerIP": "localhost:8081",
+	"Username": "Default",
+	"CentralServerIP": "localHost:9090",
+	"CentralServerCACert": "../server/certs/ca-cert.pem",
+	"token": "test"
+```
+Then the database must have the user "smvs" with the password "password" and there must be a "smvsclienthost" database.
+For the Dufault "DB" setting and a local database server, running the following query will initialize the database.
+```
+CREATE USER 'smvs'@localhost IDENTIFIED BY 'password';
+CREATE DATABASE smvsclienhost
 ```
 ---
 
@@ -64,10 +89,24 @@ Navigate the `./src/protos/` directory and run:
 make install
 ```
 
-Once the protocols are install, navigate to the `./src/server/` and run:
+Once the protocols are install, navigate to the `./src/server/certs` and run:
 
 ```
+./gen.sh
+```
+navigate to `./scr/server` then run:
+```
 go build
+```
+
+Or instead after the protocols are install, navigate to `./src/server` and run:
+```
+make server
+```
+
+To clean, navigate to `./src/server` and run:
+```
+make clean
 ```
 
 Any changes you want to do to the system (like changing the password for the DB) currently must be by modifying the src files. 
@@ -81,10 +120,24 @@ Navigate the `./src/protos/` directory and run:
 make install
 ```
 
-Once the protocols are install, navigate to the `./src/clientHost/` and run:
+Once the protocols are install, navigate to the `./src/clientHost/certs` and run:
 
 ```
+./gen.sh
+```
+navigate to `./scr/clientHost` then run:
+```
 go build
+```
+
+Or instead after the protocols are install, navigate to `./src/clientHost` and run:
+```
+make clientHost
+```
+
+To clean, navigate to `./src/clientHost` and run:
+```
+make clean
 ```
 
 
