@@ -23,6 +23,8 @@ For a local database server, running the following query will initialize the dat
 ```
 CREATE USER 'smvs'@localhost IDENTIFIED BY 'password';
 CREATE DATABASE smvsserver;
+GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, UPDATE ON smvsserver.* TO 'smvs'@localhost;
+FLUSH PRIVILEGES;
 ```
 Additionally port 9090 must be free for the server to use.
 Once all of this setup is complete, the server is ready.
@@ -67,6 +69,8 @@ For the Dufault `"DB"` setting and a local database server, running the followin
 ```
 CREATE USER 'smvs'@localhost IDENTIFIED BY 'password';
 CREATE DATABASE smvsclienthost;
+GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, UPDATE ON smvsclienthost.* TO 'smvs'@localhost;
+FLUSH PRIVILEGES;
 ```
 ---
 
