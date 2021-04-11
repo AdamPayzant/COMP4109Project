@@ -185,6 +185,11 @@ func updateUserInfo(userInfo *UserInfo) (sql.Result, error) {
 		err - If there's an error finding the user
 */
 func getUserInfo(username string) (*UserInfo, error) {
+	userConnection := userConnections[username]
+	if userConnection != nil {
+		return userConnection.userInfo, nil
+	}
+
 	var err error = errors.New("No such user in DB")
 	var msgCount int
 	var keyBytes []byte
