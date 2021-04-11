@@ -30,10 +30,8 @@ Once all of this setup is complete, the server is ready.
 ### Client Host
 The client host has only been validated in windows, though it is likely compatible with other OS's.
 The client host can be either built from source or run from a precompiled binary.
-The client host needs some external files to be created before running.
+The client host needs a settings.json file as input. The fields in the settings are:
 ```
-Client Host will need:
-    A JSON settings file that contains: 
         "ClientPublicKeyPath": "<client public key path>.pem",
         "ServerCert": "<Path for the clienthost cert>",
         "ServerKey": "<Path for the clienthost server-key>"
