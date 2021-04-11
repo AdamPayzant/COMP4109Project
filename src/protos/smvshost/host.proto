@@ -9,9 +9,9 @@ service clientHost {
     rpc DeleteMessage(DeleteReq) returns (Status);
     rpc RecieveText(H2HText) returns (Status);
 
-    //
-    rpc LogIn(ClientInfo) returns (Status); 
-    rpc LogOut(ClientInfo) returns (Status); 
+    // rpc for Client
+    rpc LogIn(ClientInfo) returns (Status);
+    rpc LogOut(ClientInfo) returns (Status);
     rpc UpdateKey(PublicKeyInfo) returns (Status); // Requests client's host to change keys
     rpc SendText(ClientText) returns (Status);
     rpc PingUser(Username) returns (Status);
@@ -46,16 +46,11 @@ message DeleteReq {
     bytes token = 3;
 }
 
-// Contains a secret to be shared between two hosts
-message InitMessage {
-    string secret = 1;
-}
-
 // The message to be sent between hosts for texts
 message H2HText {
     ListofMessages message = 1;
     string user = 2;
-    string secret = 3;
+    bytes secret = 3;
 }
 
 // Because the way protobuffers (don't) do lists, this is the best way to do this
@@ -66,7 +61,8 @@ message ListofMessages {
 message ClientText {
     string targetUser = 1;
     ListofMessages message = 2;
-    bytes token = 3; // The client device's auth token
+    bytes secret = 3;
+    bytes token = 4; // The client device's auth token
 }
 
 message Username {

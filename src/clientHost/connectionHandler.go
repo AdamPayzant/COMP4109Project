@@ -12,6 +12,7 @@ import (
 	pb_host "pb_host"
 
 	// pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
+	pb_client "github.com/AdamPayzant/COMP4109Project/src/protos/smvsclient"
 	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
 
 	"google.golang.org/grpc"
@@ -20,9 +21,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type ClientConnection struct {
+type UserConnection struct {
 	userInfo  *UserInfo
-	client    pb_host.ClientHostClient
+	user      pb_host.ClientHostClient
 	conn      *grpc.ClientConn
 	idleCount int
 }
@@ -32,31 +33,41 @@ type ServerConnection struct {
 	conn   *grpc.ClientConn
 }
 
+type ClientConnection struct {
+	client pb_client.ClientClient
+	conn   *grpc.ClientConn
+}
+
 var centralServer *ServerConnection
+var clientConnection *ClientConnection
 
 const maxConnections int = 10
 
 var connectionCount int = 0
-var clientConnections map[string]*ClientConnection
+var userConnections map[string]*UserConnection
 
 func initConnectionPool() {
-	clientConnections = make(map[string]*ClientConnection)
+	userConnections = make(map[string]*UserConnection)
 }
 
 func closeConnectionPool() {
-	for _, userConnection := range clientConnections {
+	for _, userConnection := range userConnections {
 		userConnection.conn.Close()
 	}
 }
 
-func getConnectionToUser(username string) (*ClientConnection, error) {
+func getConnectionToClient() *ClientConnection {
+	return clientConnection
+}
+
+func getConnectionToUser(username string) (*UserConnection, error) {
 	var err error
-	connection := clientConnections[username]
+	connection := userConnections[username]
 	if connection == nil {
 		if connectionCount > maxConnections {
 			var greatestIdleCount = 0
-			var mostIdled *ClientConnection
-			for _, userConnection := range clientConnections {
+			var mostIdled *UserConnection
+			for _, userConnection := range userConnections {
 				if userConnection.idleCount > greatestIdleCount {
 					greatestIdleCount = userConnection.idleCount
 					mostIdled = userConnection
@@ -64,13 +75,13 @@ func getConnectionToUser(username string) (*ClientConnection, error) {
 			}
 
 			mostIdled.conn.Close()
-			delete(clientConnections, mostIdled.userInfo.username)
+			delete(userConnections, mostIdled.userInfo.username)
 			connectionCount = connectionCount - 1
 		}
 
 		connection, err = connectToUser(username)
 		if err == nil {
-			clientConnections[username] = connection
+			userConnections[username] = connection
 			connectionCount = connectionCount + 1
 		}
 	}
@@ -114,7 +125,14 @@ func connectToCentralServer() (*ServerConnection, error) {
 	return &ServerConnection{server: pb_server.NewServerClient(conn), conn: conn}, nil
 }
 
-func connectToUser(user string) (*ClientConnection, error) {
+func closeConnectionToCentralServer() {
+	if clientConnection != nil {
+		clientConnection.conn.Close()
+		clientConnection = nil
+	}
+}
+
+func connectToUser(user string) (*UserConnection, error) {
 	config := &tls.Config{
 		InsecureSkipVerify: true,
 	}
@@ -148,14 +166,40 @@ func connectToUser(user string) (*ClientConnection, error) {
 
 	_ = updateOrAddUserInfo(userInfo)
 
-	return &ClientConnection{userInfo: userInfo, client: connection, conn: conn, idleCount: 0}, nil
+	return &UserConnection{userInfo: userInfo, user: connection, conn: conn, idleCount: 0}, nil
+}
+
+func connectToClient(ip string) error {
+	config := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	conn, err := grpc.Dial(ip, grpc.WithTransportCredentials(credentials.NewTLS(config)))
+	if err != nil {
+		return err
+	}
+
+	clientConnection = &ClientConnection{client: pb_client.NewClientClient(conn), conn: conn}
+
+	return nil
+}
+
+func closeClientConnection() {
+	if centralServer != nil {
+		centralServer.conn.Close()
+		centralServer = nil
+	}
 }
 
 func getUserInfoFromSever(user string) (*UserInfo, error) {
 	centralServer, e := getConnectionToCentralServer()
-	ui, e := centralServer.server.GetUser(context.Background(), &pb_server.Username{Username: user})
 	if e != nil {
 		log.Printf("Could not connect to central server: %v", e)
+		return nil, e
+	}
+	ui, e := centralServer.server.GetUser(context.Background(), &pb_server.Username{Username: user})
+	if e != nil {
+		log.Printf("Could not get user info from central server: %v", e)
 		return nil, e
 	}
 

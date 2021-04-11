@@ -1,10 +1,13 @@
 package main
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
+	"crypto/sha512"
+	"crypto/x509"
 	"encoding/base64"
+	"log"
 
 	// pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
 
@@ -12,23 +15,20 @@ import (
 )
 
 var clientPublicKey *rsa.PublicKey
-var clientPrivateKey *rsa.PrivateKey
 
-func RSA_OAEP_Encrypt(secretMessage string, key *rsa.PublicKey) (string, error) {
-	label := []byte("OAEP Encrypted")
+func RSA_OAEP_Encrypt(plaintext string, key *rsa.PublicKey) (string, error) {
 	rng := rand.Reader
-	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rng, key, []byte(secretMessage), label)
-	if err != nil {
-		return "", err
+	encryptedMSG, er := rsa.EncryptOAEP(sha512.New(), rng, key, []byte(plaintext), nil)
+	if er != nil {
+		return "", er
 	}
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
+	return base64.StdEncoding.EncodeToString(encryptedMSG), nil
 }
 
 func RSA_OAEP_Decrypt(cipherText string, privKey *rsa.PrivateKey) (string, error) {
 	ct, _ := base64.StdEncoding.DecodeString(cipherText)
-	label := []byte("OAEP Encrypted")
 	rng := rand.Reader
-	plaintext, err := rsa.DecryptOAEP(sha256.New(), rng, privKey, ct, label)
+	plaintext, err := rsa.DecryptOAEP(sha512.New(), rng, privKey, ct, nil)
 	if err != nil {
 		return "", err
 	}
@@ -44,6 +44,15 @@ func encryptForClient(msg string) (string, error) {
 	return cypherText, nil
 }
 
+func bytesToKey(bytes []byte) (*rsa.PublicKey, error) {
+	key, e := x509.ParsePKIXPublicKey(bytes)
+	return key.(*rsa.PublicKey), e
+}
+
+func keyToBytes(key *rsa.PublicKey) ([]byte, error) {
+	return x509.MarshalPKIXPublicKey(key)
+}
+
 func encryptForSending(msg string, userInfo *UserInfo) (string, error) {
 	cypherText, err := RSA_OAEP_Encrypt(msg, userInfo.key)
 	if err != nil {
@@ -53,14 +62,31 @@ func encryptForSending(msg string, userInfo *UserInfo) (string, error) {
 	return cypherText, nil
 }
 
-func generateSecret(userInfo *UserInfo) string {
-	return "asdsad"
-}
+func verifySecret(userInfo *UserInfo, secret []byte) bool {
+	hash := sha512.New()
+	hash.Write([]byte(userInfo.username))
+	err := rsa.VerifyPKCS1v15(userInfo.key, crypto.SHA512, hash.Sum(nil), secret)
+	if err != nil {
+		log.Printf("Error verifying Secret: %s\n", err)
+		return false
+	}
 
-func verifySecret(userInfo *UserInfo, secret string) bool {
 	return true
 }
 
-func authenticateClientToken(token string) bool {
+func authenticateClientToken(token []byte) bool {
+	hash := sha512.New()
+	hash.Write([]byte(settings.Token))
+	err := rsa.VerifyPKCS1v15(clientPublicKey, crypto.SHA512, hash.Sum(nil), token)
+	if err != nil {
+		log.Printf("Error verifying Secret Token: %s\n", err)
+		return false
+	}
+
 	return true
+}
+
+func decryptToken(token []byte) ([]byte, error) {
+	// todo
+	return token, nil
 }

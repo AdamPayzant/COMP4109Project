@@ -5,6 +5,7 @@
 	"DB": "smvs:password@tcp(localhost:3306)/smvsclienthost",
 	"ServerIP": "localhost:8081",
 	"Username": "Default",
-	"CentrialServerIP": "localHost:9090",
-	"CentrialServerCACert": "../server/certs/ca-cert.pem"
+	"CentralServerIP": "localHost:9090",
+	"CentralServerCACert": "../server/certs/ca-cert.pem",
+	"token": "test"
 }
