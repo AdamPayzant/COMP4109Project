@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"math"
+	"time"
 
 	pb_host "pb_host"
 
 	// pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
+	pb_client "github.com/AdamPayzant/COMP4109Project/src/protos/smvsclient"
 	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -66,47 +69,100 @@ func storeMesssage(user string, speaker bool, msg string) {
 	}
 }
 
-func (h *host) ReKey(ctx context.Context, req *pb_host.Token) (*pb_host.Status, error) {
-	/*
-		This function is used to update the public key for the RSA encryption.
-		The public key can only be changed if the correct auth key is provided to the main server
-		The private key should only exist on TRUSTED end user clients.
-	*/
+func forawrdMessageToClient(msg *pb_host.ListofMessages) {
+	client := getConnectionToClient()
+	if client != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
 
-	/*
-		This is currently just in a state to demo gRPC call
-		Plenty of stuff still to do
-		TODO:
-			Implement key management system
-			Implement token management system
-	*/
-	// 	newkey, err := rsa.GenerateKey(rand.Reader, 2048)
-	// 	if err != nil {
-	// 		return &pb_host.Status{Status: 1}, errors.New("Key gen error")
-	// 	}
-	// 	// Get authtoken
-	// 	authToken := make([]byte, 64)
+		status, err := client.client.RecieveMessage(ctx, &pb_client.ListofMessages{Messages: msg.Messages})
+		if err != nil {
+			log.Printf("Could not forward message: %v \n", err)
+		}
 
-	// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	// 	defer cancel()
-	// 	keyBytes, _ := x509.MarshalPKIXPublicKey(&newkey.PublicKey)
-	// 	r, err := server.UpdateKey(ctx, &pb_server.KeyUpdate{Username: username,
-	// 		AuthKey: authToken,
-	// 		NewKey:  keyBytes})
-	// 	if err != nil {
-	// 		return &pb_host.Status{Status: 2}, err
-	// 	}
-	// 	return &pb_host.Status{Status: r.Status}, nil
-	// }
+		if status.Status != 0 {
+			log.Println("Could not forward message")
+		}
+	}
+}
 
-	// func (h *host) DeleteMessage(ctx context.Context, req *pb_host.DeleteReq) (*pb_host.Status, error) {
-	// 	if authenticateClientToken(req.Token) {
-	// 		e := deleteMessageFromDB(req.User, req.MessageID)
-	// 		if e != nil {
-	// 			return &pb_host.Status{Status: 2}, e
-	// 		}
-	// 	}
+func LogIn(ctx context.Context, req *pb_host.ClientInfo) (*pb_host.Status, error) {
+	if req.Username != settings.Username {
+		return &pb_host.Status{Status: 1}, errors.New("User does not match")
+	}
+
+	if !authenticateClientToken(req.Token) {
+		return &pb_host.Status{Status: 1}, errors.New("Failed to authenticate Token")
+	}
+
+	err := connectToClient(req.Ip)
+	if err != nil {
+		return &pb_host.Status{Status: 1}, err
+	}
+
 	return &pb_host.Status{Status: 0}, nil
+}
+
+func LogOut(ctx context.Context, req *pb_host.ClientInfo) (*pb_host.Status, error) {
+	if req.Username != settings.Username {
+		return &pb_host.Status{Status: 1}, errors.New("User does not match")
+	}
+
+	if !authenticateClientToken(req.Token) {
+		return &pb_host.Status{Status: 1}, errors.New("Failed to authenticate Token")
+	}
+
+	closeClientConnection()
+
+	return &pb_host.Status{Status: 0}, nil
+}
+
+func UpdateKey(ctx context.Context, req *pb_host.PublicKeyInfo) (*pb_host.Status, error) {
+	if !authenticateClientToken(req.Token) {
+		return &pb_host.Status{Status: 1}, errors.New("Failed to authenticate Token")
+	}
+
+	centralServer, err := getConnectionToCentralServer()
+	if err != nil {
+		return &pb_host.Status{Status: 1}, err
+	}
+
+	_, err = bytesToKey(req.Key)
+	if err != nil {
+		return &pb_host.Status{Status: 1}, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	status, err := centralServer.server.UpdateKey(ctx, &pb_server.KeyUpdate{Username: settings.Username, AuthKey: req.Token, NewKey: req.Key})
+	return &pb_host.Status{Status: status.Status}, err
+}
+
+func UserPing(ctx context.Context, req *pb_host.Username) (*pb_host.Status, error) {
+	log.Println("Pinging...")
+	if !authenticateClientToken(req.Token) {
+		return &pb_host.Status{Status: 1}, errors.New("Failed to authenticate Token")
+	}
+
+	userConnection, err := getConnectionToUser(req.Username)
+	if err != nil {
+		return &pb_host.Status{Status: 1}, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	status, _ := userConnection.user.Ping(ctx, &pb_host.Empty{})
+	if status.Status == 0 {
+		log.Println("Pong!")
+	}
+	return status, nil
+}
+
+func Ping(ctx context.Context, req *pb_host.Empty) *pb_host.Status {
+	log.Println("Ping!")
+	return &pb_host.Status{Status: 0}
 }
 
 func (h *host) DeleteMessage(ctx context.Context, req *pb_host.DeleteReq) (*pb_host.Status, error) {
@@ -122,23 +178,26 @@ func (h *host) DeleteMessage(ctx context.Context, req *pb_host.DeleteReq) (*pb_h
 
 func (h *host) SendText(ctx context.Context, req *pb_host.ClientText) (*pb_host.Status, error) {
 	if req.TargetUser != settings.Username && authenticateClientToken(req.Token) {
-		clientConnection, e := getConnectionToUser(req.TargetUser)
+		userConnection, e := getConnectionToUser(req.TargetUser)
 		if e != nil {
 			log.Printf("Failed to connect to user: %v", e)
 			return &pb_host.Status{Status: 1}, e
 		}
 
-		secret := generateSecret(clientConnection.userInfo)
+		secret := generateSecret(userConnection.userInfo)
 		msg := listofMessagesToString(req.Message)
-		msgEncryptedForSending, er := encryptForSending(msg, clientConnection.userInfo)
+		msgEncryptedForSending, er := encryptForSending(msg, userConnection.userInfo)
 		if er != nil {
 			log.Println(er)
 			return &pb_host.Status{Status: 1}, nil
 		}
 
-		startus, err := clientConnection.client.RecieveText(context.Background(), &pb_host.H2HText{Message: stringToListofMessages(msgEncryptedForSending), User: settings.Username, Secret: secret})
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		status, err := userConnection.user.RecieveText(ctx, &pb_host.H2HText{Message: stringToListofMessages(msgEncryptedForSending), User: settings.Username, Secret: secret})
 		if err != nil {
-			return startus, err
+			return status, err
 		}
 
 		msgEncryptedForClient, errr := encryptForClient(msg)
@@ -164,6 +223,7 @@ func (h *host) RecieveText(ctx context.Context, req *pb_host.H2HText) (*pb_host.
 		if verifySecret(userInfo, req.Secret) {
 			message := listofMessagesToString(req.Message)
 			storeMesssage(req.User, false, message)
+			forawrdMessageToClient(req.Message)
 
 			status = &pb_host.Status{Status: 0}
 			recivedWithLocalInfo = true
@@ -179,6 +239,7 @@ func (h *host) RecieveText(ctx context.Context, req *pb_host.H2HText) (*pb_host.
 		if verifySecret(userInfo, req.Secret) {
 			message := listofMessagesToString(req.Message)
 			storeMesssage(req.User, false, message)
+			forawrdMessageToClient(req.Message)
 
 			status = &pb_host.Status{Status: 0}
 		} else {
