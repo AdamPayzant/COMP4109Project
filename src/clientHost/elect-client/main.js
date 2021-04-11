@@ -19,8 +19,12 @@ let addressBook = []
 let chatHistories = {}
 let UIView = null
 let outbound = null;
+let cConnection = null;
+
 let chat = null;
 let timer = null;
+
+let sessionToken = null;
 let rsaKey = null;
 let rsaHostKey = null;
 let configFilePath = "."
@@ -71,32 +75,15 @@ app.on('activate', () => {
 ipcMain.on('chatSent', (event, chatText)=>{
   SendText(chatText)
   //Send to Host Here
-  /*
-  if(outbound != null)
-    outbound.SendText({targetUser:otherUser.name, message:[rsaKey.encryptPrivate(sanatizeText(chatText))], token:config.key}, function(err, responce){
-      if(err){
-        console.log(err)
-        dissconnectFromHost()
-      }
-      console.log(responce);
-    });
-  */
+  hostfunc_SendText(chatText);
 })
 
 ipcMain.on('deleteMSG', (event, msgID)=>{
   deleteMessage(msgID)
-  //Send to Host Here
-  /*
-  if(outbound != null)
-    outbound.DeleteMessage({user:otherUser.name, messageID:int(msgID), token:config.key}, function(err, responce){
-      if(err){
-        console.log(err)
-        dissconnectFromHost()
-      }
-      console.log(responce);
-    })
 
-  */
+  //Send to Host Here
+  hostfunc_DeleteMessage(msgID);
+
 })
 
 ipcMain.on('loginAttempt',(event, loginData)=>{
@@ -107,11 +94,9 @@ ipcMain.on('loginAttempt',(event, loginData)=>{
     case 0:
       changeView('chat')
       break;
-
     case 1:
       UIView.webContents.send('loginStatus', false)
-      break;
-      
+      break;    
   }
   
 })
@@ -136,7 +121,7 @@ ipcMain.on('exportCoversationToJSON', (event)=>{
 
 //Menu
 ipcMain.on('requestChat', (event, id)=>{
-  requestChat(id);
+  //requestChat(id);
 })
 
 ipcMain.on('requestChatUName', (event, id)=>{
@@ -285,16 +270,6 @@ function SendText(chatText) {
       UIView.webContents.send('inBoundChat', msgData)
     }
     
-    if(outbound != null && rsaKey != null){
-      outbound.send({username:config.name, text:rsaKey.encryptPrivate(sanatizeText(chatText))}, function(err, responce){
-        if(err){
-          console.log(err)
-          dissconnectFromHost()
-        }
-        console.log(responce);
-      })
-    }
-    
 }
 function deleteMessage(msgID) {
 
@@ -334,18 +309,7 @@ function requestChat(id){
     return;
   }
 
-  if(typeof(id) == "number"){
-    
-    if(id !== -1){
-      otherUser = addressBook.filter((value)=>{return value.indentifier == id})[0] || null;
-    }
-
-    if(otherUser != null){
-      loadChatData(otherUser.name)
-    } 
-
-
-  } else if (typeof(id) == "string"){
+  if (typeof(id) == "string"){
 
     loadChatData(id)
 
@@ -368,27 +332,18 @@ function requestChat(id){
   //Move to other screen
   changeView('chat')
 
-
-
 }
+
+
 
 
 function loadChatData(id){
 
-  let tempHist = {}
+  getUser(id);
+
+  let tempHist = hostfunc_GetConversation();
   
   //Replace user getting data from other source
-  if(outbound != null){
-    tempHist = outbound.GetConversation({token:config.key, username:id}, function(err, responce){
-      console.log(responce);
-      
-      if(err){
-        console.log(err)
-        dissconnectFromHost()
-      }
-    })
-
-  }
 
   console.log(tempHist);
 
@@ -419,19 +374,7 @@ function loadChatData(id){
 
 function getNewMessages(id){
 
-  let tempHist = {}
-
-  if(outbound != null){
-    tempHist = outbound.GetConversation({token:config.key, username:id}, function(err, responce){
-      console.log(responce);
-      
-      if(err){
-        console.log(err)
-        tempHist = null;
-      }
-    })
-
-  }
+  let tempHist = hostfunc_RecieveText()
 
   if(!tempHist){
     return;
@@ -501,19 +444,15 @@ function start(){
   
   fs.writeFileSync(configFilePath+"/userData.json", JSON.stringify(config),(err)=>{})
 
-  rsaKey = new rsaLib();
+  rsaKey = new rsaLib({signingAlgorithm:'sha512'});
 
   fs.readFile(configFilePath+"/rsaKeyPrivate.pem",(err, data)=>{
 
     if(err){
       console.log(err)
-
-      rsaKey.generateKeyPair(2048, 65537);
-      fs.writeFile(configFilePath+"/rsaKeyPrivate.pem", rsaKey.exportKey("pkcs8-private-pem"), (err)=>{});
-      fs.writeFile(configFilePath+"/rsaKeyPublic.pem", rsaKey.exportKey("pkcs8-public-pem"), (err)=>{});
+      generateRSAKeys()
 
     } else {
-
       rsaKey.importKey(data, "pkcs8-private-pem");
       
     }
@@ -525,7 +464,7 @@ function start(){
       console.error(err);
       return;
     }
-    rsaHostKey = new rsaLib(data, "pkcs8-public-pem");
+    rsaHostKey = new rsaLib(data, "pkcs8-public-pem", {signingAlgorithm:'sha512'});
 
   });
 
@@ -534,6 +473,15 @@ function start(){
 
 
 }
+
+function generateRSAKeys(){
+
+  rsaKey.generateKeyPair(2048, 65537);
+  fs.writeFile(configFilePath+"/rsaKeyPrivate.pem", rsaKey.exportKey("pkcs8-private-pem"), (err)=>{});
+  fs.writeFile(configFilePath+"/rsaKeyPublic.pem", rsaKey.exportKey("pkcs8-public-pem"), (err)=>{});
+
+}
+
 
 /*##################################*\
   grpc Functions
@@ -568,37 +516,245 @@ function createNewHostConnection(credentials){
     });
 
     let cServer = new grpcLibrary.loadPackageDefinition(packageDefinition).smvs.Server;
-    let cConnection = new cServer(config.centralserverIP, grpcLibrary.credentials.createInsecure());
-
-    cConnection.Register({username: config.name, key:stringToByteArry(rsaKey.exportKey("pkcs8-public-pem")), ip:"localhost" },(err, responce)=>{
-      console.log(err);
-      console.log(responce);
-    });
-
-
+    cConnection = new cServer(config.centralserverIP, grpcLibrary.credentials.createInsecure());
+    Register();
+    
     UIView.webContents.send('hostConnect');
 
-    //console.log(outbound.Dial(networkAddr, grpcLibrary.credentials.createInsecure()));
-/*
-    outbound.ReKey({token:rsaKey.exportKey("pkcs1-public-pem")}, function(err, responce){
-      if(err){
-        console.log(err)
-        dissconnectFromHost()
-        throw err
-      }
-      console.log(responce);
-      UIView.webContents.send('hostConnect');
-    });
-*/
   } catch (error) {
     console.log(error);
     UIView.webContents.send('userConnection', {status:"Failed", message:"host Login failed"});
     return;
   }
 
-  
+}
+
+function Register(){
+
+  if(!cConnection)
+    return
+
+  cConnection.Register({username: config.name, key:stringToByteArry(rsaKey.exportKey("pkcs8-public-pem")), ip:"localhost" },(err, responce)=>{
+    console.log(err);
+    console.log(responce);
+  });
+
+}
+function getToken(){
+
+  if(!cConnection)
+    return
+
+  cConnection.getToken({username:config.name},(err, responce)=>{
+    if(err){
+      console.log(err);
+      return;
+    }
+    sessionToken = responce.authKey;
+
+    console.log(responce);
+  });
+}
+
+function UpdateIP(){
+
+  if(!cConnection)
+    return
+
+  cConnection.UpdateIP({username:config.name, authKey:sessionToken, newIP:networkAddr},(err, responce)=>{
+    if(err){
+      console.log(err);
+      return;
+    }
+    console.log(responce);
+  });
 
 }
 
+function UpdateKey(){
+
+  if(!cConnection)
+    return
+  
+  //generateRSAKeys()
+  cConnection.UpdateKey({username:config.name, authKey:sessionToken, newKey:stringToByteArry(rsaKey.exportKey("pkcs8-public-pem"))},(err, responce)=>{
+    if(err){
+      console.log(err);
+      return;
+    }
+    console.log(responce);
+  });
+
+}
+
+function getUser(uname){
+
+  if(!cConnection)
+    return
+
+  cConnection.getUser({username:uname}, (err, responce)=>{
+
+    if(err){
+      console.log(err);
+      return;
+    }
+    console.log(responce);
+
+    otherUser.ip = responce.IP;
+    otherUser.key = responce.publicKey;
+
+  });
+
+}
+
+function hostfunc_LogIn(token, username, ip) {
+
+  if(outbound == null)
+    return;
+
+  outbound.LogIn({token:[], username:config.name, ip:config.ip},(err, responce)=>{
+    if(err){
+      console.log(err)
+      dissconnectFromHost()
+    }
+    console.log(responce);
+  }) 
+
+}; 
+function hostfunc_UpdateKey(token, key) {
+
+  outbound.UpdateKey({token:[], key:[]},(err, responce)=>{
+    if(err){
+      console.log(err)
+      dissconnectFromHost()
+    }
+    console.log(responce);
+  }) 
 
 
+}; // Requests client's host to change keys
+function hostfunc_PingUser(token, username) {
+
+  if(outbound == null)
+    return;
+
+  outbound.PingUser({token:[], username:config.name, ip:ip},(err, responce)=>{
+    if(err){
+      console.log(err)
+      dissconnectFromHost()
+    }
+    console.log(responce);
+  }) 
+
+
+};
+
+// Messaging calls
+function hostfunc_DeleteMessage(user, messageID, token) {
+
+  if(outbound == null)
+    return;
+    
+  outbound.DeleteMessage({user:otherUser.name, messageID:int(messageID), token:config.key}, function(err, responce){
+    if(err){
+      console.log(err)
+      dissconnectFromHost()
+    }
+    console.log(responce);
+  })
+  
+};
+
+function hostfunc_SendText(targetUser, message, token) {
+
+  if(outbound == null || rsaKey == null){
+    return;
+  }
+
+  rsaKey.option
+  key.setOptions({})
+  rsaKey.sign(sanatizeText(chatText));
+
+  outbound.SendText({username:config.name, text:rsaKey.encryptPrivate(sanatizeText(chatText)), token:rsaKey.sign(sanatizeText(chatText))}, function(err, responce){
+    if(err){
+      console.log(err)
+      dissconnectFromHost()
+    }
+    console.log(responce);
+  })
+
+};
+
+function hostfunc_RecieveText(listOfMessages, user, secret) {
+
+  if(outbound == null || rsaKey == null){
+    return;
+  }
+  
+  outbound.RecieveText({token:config.key, username:id}, function(err, responce){
+    console.log(responce);
+    if(err){
+      console.log(err)
+      dissconnectFromHost()
+    }
+
+    for(m of responce.message){
+      RecieveText(rsaHostKey.decryptPublic(m));
+    }
+
+  })
+
+};
+
+function hostfunc_GetConversation(token, username) {
+
+  if(outbound == null){
+    return
+  }
+
+  outbound.GetConversation({token:config.key, username:id}, function(err, responce){
+    console.log(responce);
+      
+    if(err){
+      console.log(err)
+      dissconnectFromHost()
+    }
+
+  })
+};
+
+function hostfunc_Ping() {
+
+  if(outbound == null){
+    return
+  }
+
+  outbound.Ping({}, function(err, responce){
+    console.log(responce);
+      
+    if(err){
+      console.log(err)
+      dissconnectFromHost()
+    }
+
+  })
+
+};
+
+function hostfunc_LogOut(ClientInfo) {
+
+  if(outbound == null){
+    return
+  }
+
+  outbound.LogOut({token:config.key, username:id}, function(err, responce){
+    console.log(responce);
+      
+    if(err){
+      console.log(err)
+      dissconnectFromHost()
+    }
+
+  })
+  
+}; 
