@@ -17,8 +17,8 @@ A more complete description of this system can be found in `Proposal/proposal.pd
 
 The server has only been validated in Linux, though it is likely compatible with other OS's.s
 The server can be either built from source or run from a precompiled binary.
-If using the default settings, a Mariadb server must be running locally on port 3306. 
-This DB must have a user named smvs with the password "password" and have a database named "smvsserver".
+If using the default settings, a `Mariadb` server must be running locally on port 3306. 
+This DB must have a user named `smvs` with the password `"password"` and have a database named `"smvsserver"`.
 For a local database server, running the following query will initialize the database.
 ```
 CREATE USER 'smvs'@localhost IDENTIFIED BY 'password';
@@ -46,9 +46,9 @@ Client Host will need:
 ```
 
 The client host uses a database that needs to be setup.
-If using the default settings, a Mariadb server must be running locally on port 3306. 
-This DB must have the User, Password, and database specified in the "DB" string in the settings file.
-For instance the current Dufault settings are:
+If using the default settings, a `Mariadb` server must be running locally on port 3306. 
+This DB must have the User, Password, and database specified in the `"DB"` string in the settings file.
+For instance the current Default settings are:
 ```
     "ClientPublicKeyPath": "./test/keys/client_public.pem",
 	"ServerCert": "./certs/server-cert.pem",
@@ -60,8 +60,8 @@ For instance the current Dufault settings are:
 	"CentralServerCACert": "../server/certs/ca-cert.pem",
 	"token": "test"
 ```
-Then the database must have the user "smvs" with the password "password" and there must be a "smvsclienthost" database.
-For the Dufault "DB" setting and a local database server, running the following query will initialize the database.
+Then the database must have the user `smvs` with the password `"password"` and there must be a `"smvsclienthost"` database.
+For the Dufault `"DB"` setting and a local database server, running the following query will initialize the database.
 ```
 CREATE USER 'smvs'@localhost IDENTIFIED BY 'password';
 CREATE DATABASE smvsclienhost
@@ -82,7 +82,7 @@ run the client using electron. Future plans include distributing an client expor
 
 ---
 
-To build the server, the system must have golang v1.16.
+To build the server, the system must have `golang v1.16`.
 Navigate the `./src/protos/` directory and run:
 
 ```
@@ -113,7 +113,7 @@ Any changes you want to do to the system (like changing the password for the DB)
 All variables can be found at the top of the `server.go` and `dbhandler.go` files under `const`.
 
 ### Client Host
-To build the client host, the system must have golang v1.16.
+To build the client host, the system must have `golang v1.16`.
 Navigate the `./src/protos/` directory and run:
 
 ```
