@@ -24,6 +24,7 @@ type ClientHostClient interface {
 	RecieveText(ctx context.Context, in *H2HText, opts ...grpc.CallOption) (*Status, error)
 	// rpc for Client
 	LogIn(ctx context.Context, in *ClientInfo, opts ...grpc.CallOption) (*Status, error)
+	LogOut(ctx context.Context, in *ClientInfo, opts ...grpc.CallOption) (*Status, error)
 	UpdateKey(ctx context.Context, in *PublicKeyInfo, opts ...grpc.CallOption) (*Status, error)
 	SendText(ctx context.Context, in *ClientText, opts ...grpc.CallOption) (*Status, error)
 	PingUser(ctx context.Context, in *Username, opts ...grpc.CallOption) (*Status, error)
@@ -68,6 +69,15 @@ func (c *clientHostClient) RecieveText(ctx context.Context, in *H2HText, opts ..
 func (c *clientHostClient) LogIn(ctx context.Context, in *ClientInfo, opts ...grpc.CallOption) (*Status, error) {
 	out := new(Status)
 	err := c.cc.Invoke(ctx, "/smvs.clientHost/LogIn", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientHostClient) LogOut(ctx context.Context, in *ClientInfo, opts ...grpc.CallOption) (*Status, error) {
+	out := new(Status)
+	err := c.cc.Invoke(ctx, "/smvs.clientHost/LogOut", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +130,7 @@ type ClientHostServer interface {
 	RecieveText(context.Context, *H2HText) (*Status, error)
 	// rpc for Client
 	LogIn(context.Context, *ClientInfo) (*Status, error)
+	LogOut(context.Context, *ClientInfo) (*Status, error)
 	UpdateKey(context.Context, *PublicKeyInfo) (*Status, error)
 	SendText(context.Context, *ClientText) (*Status, error)
 	PingUser(context.Context, *Username) (*Status, error)
@@ -142,6 +153,9 @@ func (UnimplementedClientHostServer) RecieveText(context.Context, *H2HText) (*St
 }
 func (UnimplementedClientHostServer) LogIn(context.Context, *ClientInfo) (*Status, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LogIn not implemented")
+}
+func (UnimplementedClientHostServer) LogOut(context.Context, *ClientInfo) (*Status, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LogOut not implemented")
 }
 func (UnimplementedClientHostServer) UpdateKey(context.Context, *PublicKeyInfo) (*Status, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateKey not implemented")
@@ -240,6 +254,24 @@ func _ClientHost_LogIn_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClientHost_LogOut_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClientInfo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientHostServer).LogOut(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/smvs.clientHost/LogOut",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientHostServer).LogOut(ctx, req.(*ClientInfo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClientHost_UpdateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PublicKeyInfo)
 	if err := dec(in); err != nil {
@@ -334,6 +366,10 @@ var ClientHost_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LogIn",
 			Handler:    _ClientHost_LogIn_Handler,
+		},
+		{
+			MethodName: "LogOut",
+			Handler:    _ClientHost_LogOut_Handler,
 		},
 		{
 			MethodName: "UpdateKey",

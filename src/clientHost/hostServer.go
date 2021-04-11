@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"log"
 	"math"
+	"net"
 	"time"
 
 	pb_host "pb_host"
@@ -13,6 +15,8 @@ import (
 	// pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
 	pb_client "github.com/AdamPayzant/COMP4109Project/src/protos/smvsclient"
 	pb_server "github.com/AdamPayzant/COMP4109Project/src/protos/smvsserver"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -22,6 +26,29 @@ type host struct {
 }
 
 var server pb_server.ServerClient = nil
+
+func startClientHost(ip string) {
+	serverCert, err := tls.LoadX509KeyPair(settings.ServerCert, settings.ServerKey)
+	if err != nil {
+		log.Fatalf("Failed to setup TLS: %v", err)
+	}
+
+	config := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   tls.NoClientCert,
+	}
+
+	lis, err := net.Listen("tcp", ip)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer(grpc.Creds(credentials.NewTLS(config)))
+	pb_host.RegisterClientHostServer(s, &host{})
+
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to start the server: %v", err)
+	}
+}
 
 func stringToListofMessages(msg string) *pb_host.ListofMessages {
 	msgLen := len(msg)
@@ -166,51 +193,56 @@ func Ping(ctx context.Context, req *pb_host.Empty) *pb_host.Status {
 }
 
 func (h *host) DeleteMessage(ctx context.Context, req *pb_host.DeleteReq) (*pb_host.Status, error) {
-	if authenticateClientToken(req.Token) {
-		e := deleteMessageFromDB(req.User, req.MessageID)
-		if e != nil {
-			return &pb_host.Status{Status: 2}, e
-		}
+	if !authenticateClientToken(req.Token) {
+		return &pb_host.Status{Status: 1}, errors.New("Failed to authenticate Token")
+	}
+
+	e := deleteMessageFromDB(req.User, req.MessageID)
+	if e != nil {
+		return &pb_host.Status{Status: 2}, e
 	}
 
 	return &pb_host.Status{Status: 0}, nil
 }
 
 func (h *host) SendText(ctx context.Context, req *pb_host.ClientText) (*pb_host.Status, error) {
-	if req.TargetUser != settings.Username && authenticateClientToken(req.Token) {
-		userConnection, e := getConnectionToUser(req.TargetUser)
-		if e != nil {
-			log.Printf("Failed to connect to user: %v", e)
-			return &pb_host.Status{Status: 1}, e
-		}
+	if req.TargetUser == settings.Username {
+		return &pb_host.Status{Status: 1}, errors.New("Can not send messages to yourself")
+	}
 
-		secret := generateSecret(userConnection.userInfo)
-		msg := listofMessagesToString(req.Message)
-		msgEncryptedForSending, er := encryptForSending(msg, userConnection.userInfo)
-		if er != nil {
-			log.Println(er)
-			return &pb_host.Status{Status: 1}, nil
-		}
+	if !authenticateClientToken(req.Token) {
+		return &pb_host.Status{Status: 1}, errors.New("Failed to authenticate Token")
+	}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
+	userConnection, e := getConnectionToUser(req.TargetUser)
+	if e != nil {
+		log.Printf("Failed to connect to user: %v", e)
+		return &pb_host.Status{Status: 1}, e
+	}
 
-		status, err := userConnection.user.RecieveText(ctx, &pb_host.H2HText{Message: stringToListofMessages(msgEncryptedForSending), User: settings.Username, Secret: secret})
-		if err != nil {
-			return status, err
-		}
-
-		msgEncryptedForClient, errr := encryptForClient(msg)
-		if errr != nil {
-			log.Printf("Message was not able to be Encrypted for storage!: %v", errr)
-		} else {
-			storeMesssage(req.TargetUser, true, msgEncryptedForClient)
-		}
-
-		return &pb_host.Status{Status: 0}, nil
-	} else {
+	msg := listofMessagesToString(req.Message)
+	msgEncryptedForSending, er := encryptForSending(msg, userConnection.userInfo)
+	if er != nil {
+		log.Println(er)
 		return &pb_host.Status{Status: 1}, nil
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	status, err := userConnection.user.RecieveText(ctx, &pb_host.H2HText{Message: stringToListofMessages(msgEncryptedForSending), User: settings.Username, Secret: req.Secret})
+	if err != nil {
+		return status, err
+	}
+
+	msgEncryptedForClient, errr := encryptForClient(msg)
+	if errr != nil {
+		log.Printf("Message was not able to be Encrypted for storage!: %v", errr)
+	} else {
+		storeMesssage(req.TargetUser, true, msgEncryptedForClient)
+	}
+
+	return &pb_host.Status{Status: 0}, nil
 }
 
 func (h *host) RecieveText(ctx context.Context, req *pb_host.H2HText) (*pb_host.Status, error) {
@@ -253,22 +285,26 @@ func (h *host) RecieveText(ctx context.Context, req *pb_host.H2HText) (*pb_host.
 }
 
 func (h *host) GetConversation(ctx context.Context, req *pb_host.Username) (*pb_host.Conversation, error) {
+	if !authenticateClientToken(req.Token) {
+		return nil, errors.New("Failed to authenticate Token")
+	}
+
 	var response *pb_host.Conversation = nil
 	var err error = nil
 	var messages []Message
-	if authenticateClientToken(req.Token) {
-		messages, err = getConversationFromDB(req.Username)
 
-		if messages != nil {
-			type Convo struct {
-				Messages []Message `json:"messages"`
-			}
+	messages, err = getConversationFromDB(req.Username)
 
-			var convoJsonBytes []byte
-			convoJsonBytes, err = json.Marshal(&Convo{Messages: messages})
-			convoJson := string(convoJsonBytes)
-			response = &pb_host.Conversation{Convo: stringToListofMessages(convoJson)}
+	if messages != nil {
+		type Convo struct {
+			Messages []Message `json:"messages"`
 		}
+
+		var convoJsonBytes []byte
+		convoJsonBytes, err = json.Marshal(&Convo{Messages: messages})
+		convoJson := string(convoJsonBytes)
+		response = &pb_host.Conversation{Convo: stringToListofMessages(convoJson)}
 	}
+
 	return response, err
 }

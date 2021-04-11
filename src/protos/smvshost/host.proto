@@ -50,7 +50,7 @@ message DeleteReq {
 message H2HText {
     ListofMessages message = 1;
     string user = 2;
-    string secret = 3;
+    bytes secret = 3;
 }
 
 // Because the way protobuffers (don't) do lists, this is the best way to do this
@@ -61,7 +61,8 @@ message ListofMessages {
 message ClientText {
     string targetUser = 1;
     ListofMessages message = 2;
-    bytes token = 3; // The client device's auth token
+    bytes secret = 3;
+    bytes token = 4; // The client device's auth token
 }
 
 message Username {

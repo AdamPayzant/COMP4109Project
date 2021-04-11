@@ -44,14 +44,14 @@ var clientConnection *ClientConnection
 const maxConnections int = 10
 
 var connectionCount int = 0
-var userConnection map[string]*UserConnection
+var userConnections map[string]*UserConnection
 
 func initConnectionPool() {
-	userConnection = make(map[string]*UserConnection)
+	userConnections = make(map[string]*UserConnection)
 }
 
 func closeConnectionPool() {
-	for _, userConnection := range userConnection {
+	for _, userConnection := range userConnections {
 		userConnection.conn.Close()
 	}
 }
@@ -62,12 +62,12 @@ func getConnectionToClient() *ClientConnection {
 
 func getConnectionToUser(username string) (*UserConnection, error) {
 	var err error
-	connection := userConnection[username]
+	connection := userConnections[username]
 	if connection == nil {
 		if connectionCount > maxConnections {
 			var greatestIdleCount = 0
 			var mostIdled *UserConnection
-			for _, userConnection := range userConnection {
+			for _, userConnection := range userConnections {
 				if userConnection.idleCount > greatestIdleCount {
 					greatestIdleCount = userConnection.idleCount
 					mostIdled = userConnection
@@ -75,13 +75,13 @@ func getConnectionToUser(username string) (*UserConnection, error) {
 			}
 
 			mostIdled.conn.Close()
-			delete(userConnection, mostIdled.userInfo.username)
+			delete(userConnections, mostIdled.userInfo.username)
 			connectionCount = connectionCount - 1
 		}
 
 		connection, err = connectToUser(username)
 		if err == nil {
-			userConnection[username] = connection
+			userConnections[username] = connection
 			connectionCount = connectionCount + 1
 		}
 	}
@@ -193,9 +193,13 @@ func closeClientConnection() {
 
 func getUserInfoFromSever(user string) (*UserInfo, error) {
 	centralServer, e := getConnectionToCentralServer()
-	ui, e := centralServer.server.GetUser(context.Background(), &pb_server.Username{Username: user})
 	if e != nil {
 		log.Printf("Could not connect to central server: %v", e)
+		return nil, e
+	}
+	ui, e := centralServer.server.GetUser(context.Background(), &pb_server.Username{Username: user})
+	if e != nil {
+		log.Printf("Could not get user info from central server: %v", e)
 		return nil, e
 	}
 
