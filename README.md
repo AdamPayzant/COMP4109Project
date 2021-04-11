@@ -22,7 +22,7 @@ This DB must have a user named `smvs` with the password `"password"` and have a 
 For a local database server, running the following query will initialize the database.
 ```
 CREATE USER 'smvs'@localhost IDENTIFIED BY 'password';
-CREATE DATABASE smvsserver
+CREATE DATABASE smvsserver;
 ```
 Additionally port 9090 must be free for the server to use.
 Once all of this setup is complete, the server is ready.
@@ -30,17 +30,19 @@ Once all of this setup is complete, the server is ready.
 ### Client Host
 The client host has only been validated in windows, though it is likely compatible with other OS's.
 The client host can be either built from source or run from a precompiled binary.
-The client host needs a settings.json file as input. The fields in the settings are:
+The client host needs a `JSON` settings file as input. The fields in the settings file are:
 ```
-        "ClientPublicKeyPath": "<client public key path>.pem",
-        "ServerCert": "<Path for the clienthost cert>",
-        "ServerKey": "<Path for the clienthost server-key>"
-        "DB": "<the name of the DB>",
-        "ServerIP": "<The IP of the host mechine i.e LocalHost:<ports>>",
-        "Username": "<Username>",
-        "CentralServerIP": "<The ip of the centrial server>",
-        "CentralServerCACert": "<The CA cert for the central server>",
-        "token": "<The token to be sigend to verify the client - clenthost interactions>"
+{
+	"ClientPublicKeyPath": "<client public key path>.pem",
+	"ServerCert": "<Path for the clienthost cert>",
+	"ServerKey": "<Path for the clienthost server-key>"
+	"DB": "<the name of the DB>",
+	"ServerIP": "<The IP of the host mechine i.e LocalHost:<ports>>",
+	"Username": "<Username>",
+	"CentralServerIP": "<The ip of the centrial server>",
+	"CentralServerCACert": "<The CA cert for the central server>",
+	"token": "<The token to be sigend to verify the client - clenthost interactions>"
+}
 ```
 
 The client host uses a database that needs to be setup.
@@ -48,6 +50,7 @@ If using the default settings, a `Mariadb` server must be running locally on por
 This DB must have the User, Password, and database specified in the `"DB"` string in the settings file.
 For instance the current Default settings are:
 ```
+{
 	"ClientPublicKeyPath": "./test/keys/client_public.pem",
 	"ServerCert": "./certs/server-cert.pem",
 	"ServerKey": "./certs/server-key.pem",
@@ -57,12 +60,13 @@ For instance the current Default settings are:
 	"CentralServerIP": "localHost:9090",
 	"CentralServerCACert": "../server/certs/ca-cert.pem",
 	"token": "test"
+}
 ```
 Then the database must have the user `smvs` with the password `"password"` and there must be a `"smvsclienthost"` database.
 For the Dufault `"DB"` setting and a local database server, running the following query will initialize the database.
 ```
 CREATE USER 'smvs'@localhost IDENTIFIED BY 'password';
-CREATE DATABASE smvsclienhost
+CREATE DATABASE smvsclienhost;
 ```
 ---
 
