@@ -18,11 +18,15 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ClientHostClient interface {
-	ReKey(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Status, error)
-	// Messaging calls
+	//rpc for ClientHost
+	Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Status, error)
 	DeleteMessage(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*Status, error)
-	SendText(ctx context.Context, in *ClientText, opts ...grpc.CallOption) (*Status, error)
 	RecieveText(ctx context.Context, in *H2HText, opts ...grpc.CallOption) (*Status, error)
+	// rpc for Client
+	LogIn(ctx context.Context, in *ClientInfo, opts ...grpc.CallOption) (*Status, error)
+	UpdateKey(ctx context.Context, in *PublicKeyInfo, opts ...grpc.CallOption) (*Status, error)
+	SendText(ctx context.Context, in *ClientText, opts ...grpc.CallOption) (*Status, error)
+	PingUser(ctx context.Context, in *Username, opts ...grpc.CallOption) (*Status, error)
 	GetConversation(ctx context.Context, in *Username, opts ...grpc.CallOption) (*Conversation, error)
 }
 
@@ -34,9 +38,9 @@ func NewClientHostClient(cc grpc.ClientConnInterface) ClientHostClient {
 	return &clientHostClient{cc}
 }
 
-func (c *clientHostClient) ReKey(ctx context.Context, in *Token, opts ...grpc.CallOption) (*Status, error) {
+func (c *clientHostClient) Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Status, error) {
 	out := new(Status)
-	err := c.cc.Invoke(ctx, "/smvs.clientHost/ReKey", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/smvs.clientHost/Ping", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -52,6 +56,33 @@ func (c *clientHostClient) DeleteMessage(ctx context.Context, in *DeleteReq, opt
 	return out, nil
 }
 
+func (c *clientHostClient) RecieveText(ctx context.Context, in *H2HText, opts ...grpc.CallOption) (*Status, error) {
+	out := new(Status)
+	err := c.cc.Invoke(ctx, "/smvs.clientHost/RecieveText", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientHostClient) LogIn(ctx context.Context, in *ClientInfo, opts ...grpc.CallOption) (*Status, error) {
+	out := new(Status)
+	err := c.cc.Invoke(ctx, "/smvs.clientHost/LogIn", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientHostClient) UpdateKey(ctx context.Context, in *PublicKeyInfo, opts ...grpc.CallOption) (*Status, error) {
+	out := new(Status)
+	err := c.cc.Invoke(ctx, "/smvs.clientHost/UpdateKey", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clientHostClient) SendText(ctx context.Context, in *ClientText, opts ...grpc.CallOption) (*Status, error) {
 	out := new(Status)
 	err := c.cc.Invoke(ctx, "/smvs.clientHost/SendText", in, out, opts...)
@@ -61,9 +92,9 @@ func (c *clientHostClient) SendText(ctx context.Context, in *ClientText, opts ..
 	return out, nil
 }
 
-func (c *clientHostClient) RecieveText(ctx context.Context, in *H2HText, opts ...grpc.CallOption) (*Status, error) {
+func (c *clientHostClient) PingUser(ctx context.Context, in *Username, opts ...grpc.CallOption) (*Status, error) {
 	out := new(Status)
-	err := c.cc.Invoke(ctx, "/smvs.clientHost/RecieveText", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/smvs.clientHost/PingUser", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -83,11 +114,15 @@ func (c *clientHostClient) GetConversation(ctx context.Context, in *Username, op
 // All implementations must embed UnimplementedClientHostServer
 // for forward compatibility
 type ClientHostServer interface {
-	ReKey(context.Context, *Token) (*Status, error)
-	// Messaging calls
+	//rpc for ClientHost
+	Ping(context.Context, *Empty) (*Status, error)
 	DeleteMessage(context.Context, *DeleteReq) (*Status, error)
-	SendText(context.Context, *ClientText) (*Status, error)
 	RecieveText(context.Context, *H2HText) (*Status, error)
+	// rpc for Client
+	LogIn(context.Context, *ClientInfo) (*Status, error)
+	UpdateKey(context.Context, *PublicKeyInfo) (*Status, error)
+	SendText(context.Context, *ClientText) (*Status, error)
+	PingUser(context.Context, *Username) (*Status, error)
 	GetConversation(context.Context, *Username) (*Conversation, error)
 	mustEmbedUnimplementedClientHostServer()
 }
@@ -96,17 +131,26 @@ type ClientHostServer interface {
 type UnimplementedClientHostServer struct {
 }
 
-func (UnimplementedClientHostServer) ReKey(context.Context, *Token) (*Status, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReKey not implemented")
+func (UnimplementedClientHostServer) Ping(context.Context, *Empty) (*Status, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
 func (UnimplementedClientHostServer) DeleteMessage(context.Context, *DeleteReq) (*Status, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteMessage not implemented")
 }
+func (UnimplementedClientHostServer) RecieveText(context.Context, *H2HText) (*Status, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RecieveText not implemented")
+}
+func (UnimplementedClientHostServer) LogIn(context.Context, *ClientInfo) (*Status, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LogIn not implemented")
+}
+func (UnimplementedClientHostServer) UpdateKey(context.Context, *PublicKeyInfo) (*Status, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateKey not implemented")
+}
 func (UnimplementedClientHostServer) SendText(context.Context, *ClientText) (*Status, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendText not implemented")
 }
-func (UnimplementedClientHostServer) RecieveText(context.Context, *H2HText) (*Status, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RecieveText not implemented")
+func (UnimplementedClientHostServer) PingUser(context.Context, *Username) (*Status, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PingUser not implemented")
 }
 func (UnimplementedClientHostServer) GetConversation(context.Context, *Username) (*Conversation, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetConversation not implemented")
@@ -124,20 +168,20 @@ func RegisterClientHostServer(s grpc.ServiceRegistrar, srv ClientHostServer) {
 	s.RegisterService(&ClientHost_ServiceDesc, srv)
 }
 
-func _ClientHost_ReKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Token)
+func _ClientHost_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientHostServer).ReKey(ctx, in)
+		return srv.(ClientHostServer).Ping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/smvs.clientHost/ReKey",
+		FullMethod: "/smvs.clientHost/Ping",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientHostServer).ReKey(ctx, req.(*Token))
+		return srv.(ClientHostServer).Ping(ctx, req.(*Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -160,6 +204,60 @@ func _ClientHost_DeleteMessage_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClientHost_RecieveText_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(H2HText)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientHostServer).RecieveText(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/smvs.clientHost/RecieveText",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientHostServer).RecieveText(ctx, req.(*H2HText))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientHost_LogIn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClientInfo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientHostServer).LogIn(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/smvs.clientHost/LogIn",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientHostServer).LogIn(ctx, req.(*ClientInfo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientHost_UpdateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublicKeyInfo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientHostServer).UpdateKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/smvs.clientHost/UpdateKey",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientHostServer).UpdateKey(ctx, req.(*PublicKeyInfo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClientHost_SendText_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ClientText)
 	if err := dec(in); err != nil {
@@ -178,20 +276,20 @@ func _ClientHost_SendText_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ClientHost_RecieveText_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(H2HText)
+func _ClientHost_PingUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Username)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientHostServer).RecieveText(ctx, in)
+		return srv.(ClientHostServer).PingUser(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/smvs.clientHost/RecieveText",
+		FullMethod: "/smvs.clientHost/PingUser",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientHostServer).RecieveText(ctx, req.(*H2HText))
+		return srv.(ClientHostServer).PingUser(ctx, req.(*Username))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -222,20 +320,32 @@ var ClientHost_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ClientHostServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ReKey",
-			Handler:    _ClientHost_ReKey_Handler,
+			MethodName: "Ping",
+			Handler:    _ClientHost_Ping_Handler,
 		},
 		{
 			MethodName: "DeleteMessage",
 			Handler:    _ClientHost_DeleteMessage_Handler,
 		},
 		{
+			MethodName: "RecieveText",
+			Handler:    _ClientHost_RecieveText_Handler,
+		},
+		{
+			MethodName: "LogIn",
+			Handler:    _ClientHost_LogIn_Handler,
+		},
+		{
+			MethodName: "UpdateKey",
+			Handler:    _ClientHost_UpdateKey_Handler,
+		},
+		{
 			MethodName: "SendText",
 			Handler:    _ClientHost_SendText_Handler,
 		},
 		{
-			MethodName: "RecieveText",
-			Handler:    _ClientHost_RecieveText_Handler,
+			MethodName: "PingUser",
+			Handler:    _ClientHost_PingUser_Handler,
 		},
 		{
 			MethodName: "GetConversation",

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 
 	// pb_host "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost"
@@ -12,7 +13,6 @@ import (
 )
 
 var clientPublicKey *rsa.PublicKey
-var clientPrivateKey *rsa.PrivateKey
 
 func RSA_OAEP_Encrypt(secretMessage string, key *rsa.PublicKey) (string, error) {
 	label := []byte("OAEP Encrypted")
@@ -44,6 +44,15 @@ func encryptForClient(msg string) (string, error) {
 	return cypherText, nil
 }
 
+func bytesToKey(bytes []byte) (*rsa.PublicKey, error) {
+	key, e := x509.ParsePKIXPublicKey(bytes)
+	return key.(*rsa.PublicKey), e
+}
+
+func keyToBytes(key *rsa.PublicKey) ([]byte, error) {
+	return x509.MarshalPKIXPublicKey(key)
+}
+
 func encryptForSending(msg string, userInfo *UserInfo) (string, error) {
 	cypherText, err := RSA_OAEP_Encrypt(msg, userInfo.key)
 	if err != nil {
@@ -61,6 +70,11 @@ func verifySecret(userInfo *UserInfo, secret string) bool {
 	return true
 }
 
-func authenticateClientToken(token string) bool {
+func authenticateClientToken(token []byte) bool {
 	return true
+}
+
+func decryptToken(token []byte) ([]byte, error) {
+	// todo
+	return token, nil
 }

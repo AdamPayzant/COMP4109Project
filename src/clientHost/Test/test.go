@@ -65,14 +65,14 @@ func main() {
 	server = pb_host.NewClientHostClient(conn)
 
 	//SEND TEST
-	response, err := server.SendText(context.Background(), &pb_host.ClientText{TargetUser: "Default1", Message: &pb_host.ListofMessages{Messages: []string{"test", "test", "test"}}, Token: "TEst"})
+	response, err := server.SendText(context.Background(), &pb_host.ClientText{TargetUser: "Default1", Message: &pb_host.ListofMessages{Messages: []string{"test", "test", "test"}}, Token: []byte("TEst")})
 	if err != nil {
 		log.Fatalf("Error when calling SendText: %s", err)
 	}
 	log.Printf("Response from server: %s", response.Status)
 
 	//GET TEST
-	res, er := server.GetConversation(context.Background(), &pb_host.Username{Username: "Default1", Token: "TEst"})
+	res, er := server.GetConversation(context.Background(), &pb_host.Username{Username: "Default1", Token: []byte("TEst")})
 	if er != nil {
 		log.Fatalf("Error when calling GetConversation: %s", er)
 	}
@@ -92,14 +92,14 @@ func main() {
 	messageID := int64(convo.Messages[0].Order)
 
 	//DELETE TEST
-	response, err = server.DeleteMessage(context.Background(), &pb_host.DeleteReq{User: "Default1", MessageID: messageID, Token: "TEst"})
+	response, err = server.DeleteMessage(context.Background(), &pb_host.DeleteReq{User: "Default1", MessageID: messageID, Token: []byte("TEst")})
 	if err != nil {
 		log.Fatalf("Error when calling DeleteMessage: %s", err)
 	}
 	log.Printf("Response from server: %s", response.Status)
 
 	//GET TEST
-	res, er = server.GetConversation(context.Background(), &pb_host.Username{Username: "Default1", Token: "TEst"})
+	res, er = server.GetConversation(context.Background(), &pb_host.Username{Username: "Default1", Token: []byte("TEst")})
 	if er != nil {
 		log.Fatalf("Error when calling GetConversation: %s", er)
 	}

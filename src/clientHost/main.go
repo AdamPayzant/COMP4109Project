@@ -31,8 +31,8 @@ type ClientHostSettings struct {
 	DB                   string `json:"DB"`
 	ServerIP             string `json:"serverIP"`
 	Username             string `json:"username"`
-	CentrialServerIP     string `json:"centrialServerIP"`
-	CentrialServerCACert string `json:"centrialServerCACert"`
+	CentrialServerIP     string `json:"centralServerIP"`
+	CentrialServerCACert string `json:"centralServerCACert"`
 }
 
 var settings ClientHostSettings
@@ -71,12 +71,12 @@ func tryLoadClientPublicKey(file string) *rsa.PublicKey {
 	if err != nil {
 		log.Fatalf("Unable to decode publicKey: %v", er)
 	}
-	key, e := x509.ParsePKIXPublicKey(block.Bytes)
+	key, e := bytesToKey(block.Bytes)
 	if e != nil {
 		log.Fatalln(e)
 	}
 
-	return key.(*rsa.PublicKey)
+	return key
 }
 
 func loadSettings(file string) {
@@ -89,29 +89,6 @@ func loadSettings(file string) {
 	if e != nil {
 		log.Fatalf("Could not load settings: %v", e)
 	}
-}
-
-func decryptToken(token []byte) ([]byte, error) {
-	// todo
-	return token, nil
-}
-
-func getTokenFromServer() ([]byte, error) {
-	centralServer, err := getConnectionToCentralServer()
-	if err != nil {
-		log.Printf("Failed to get Token from Server: %v", err)
-	}
-	defer centralServer.conn.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	pd_server_token, e := centralServer.server.GetToken(ctx, &pb_server.Username{Username: settings.Username})
-	if e != nil {
-		log.Printf("Failed to retrieve token: %v", e)
-		return nil, e
-	}
-
-	token, _ := decryptToken(pd_server_token.AuthKey)
-	return token, nil
 }
 
 func registerIfNeeded() {
@@ -147,7 +124,7 @@ func registerIfNeeded() {
 // 	token, _ := getTokenFromServer()
 // 	PKIXkey, err := x509.ParsePKIXPublicKey(pb_server_userInfo.PublicKey)
 // 	if err != nil {
-// 		log.Println("Failed to parse public key from  centrial Server: %v", err)
+// 		log.Println("Failed to parse public key from  central Server: %v", err)
 // 	}
 // 	key := PKIXkey.(*rsa.PublicKey)
 
@@ -195,5 +172,6 @@ func main() {
 	startClientHost(settings.ServerIP)
 
 	closeConnectionPool()
+	closeConnectionToCentralServer()
 	db.Close()
 }
