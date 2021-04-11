@@ -4,13 +4,17 @@ package smvs;
 option go_package = "github.com/AdamPayzant/COMP4109Project/src/protos/smvshost";
 
 service clientHost {
-    rpc ReKey(Token) returns (Status); // Requests client's host to change keys
+    //rpc for ClientHost
+    rpc Ping(Empty) returns (Status);
     rpc DeleteMessage(DeleteReq) returns (Status);
-
-    // Messaging calls
-    rpc SendText(ClientText) returns (Status);
     rpc RecieveText(H2HText) returns (Status);
 
+    //
+    rpc LogIn(ClientInfo) returns (Status); 
+    rpc LogOut(ClientInfo) returns (Status); 
+    rpc UpdateKey(PublicKeyInfo) returns (Status); // Requests client's host to change keys
+    rpc SendText(ClientText) returns (Status);
+    rpc PingUser(Username) returns (Status);
     rpc GetConversation(Username) returns (Conversation);
 }
 
@@ -19,9 +23,16 @@ message Empty {
 
 }
 
+message ClientInfo{
+    bytes token = 1;
+    string username = 2;
+    string ip = 3;
+}
+
 // Contains the client device's auth token
-message Token {
-    string token = 1;
+message PublicKeyInfo {
+    bytes token = 1;
+    bytes key = 2;
 }
 
 // A generic status response message
@@ -32,7 +43,7 @@ message Status {
 message DeleteReq {
     string user = 1;
     int64 messageID = 2;
-    string token = 3;
+    bytes token = 3;
 }
 
 // Contains a secret to be shared between two hosts
@@ -55,11 +66,11 @@ message ListofMessages {
 message ClientText {
     string targetUser = 1;
     ListofMessages message = 2;
-    string token = 3; // The client device's auth token
+    bytes token = 3; // The client device's auth token
 }
 
 message Username {
-    string token = 1;
+    bytes token = 1;
     string username = 2;
 }
 

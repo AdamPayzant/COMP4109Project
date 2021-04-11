@@ -23,7 +23,7 @@ message Empty {
 
 }
 
-message ClientInfo {
+message ClientInfo{
     bytes token = 1;
     string username = 2;
     string ip = 3;
