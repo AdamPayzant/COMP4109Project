@@ -35,7 +35,7 @@ The client host needs a `JSON` settings file as input. The fields in the setting
 {
 	"ClientPublicKeyPath": "<client public key path>.pem",
 	"ServerCert": "<Path for the clienthost cert>",
-	"ServerKey": "<Path for the clienthost server-key>"
+	"ServerKey": "<Path for the clienthost server-key>",
 	"DB": "<the name of the DB>",
 	"ServerIP": "<The IP of the host mechine i.e LocalHost:<ports>>",
 	"Username": "<Username>",
