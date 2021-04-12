@@ -103,7 +103,7 @@ func main() {
 	registerIfNeeded()
 	startClientHost(settings.ServerIP)
 
-	closeConnectionPool()
-	closeConnectionToCentralServer()
-	db.Close()
+	//closeConnectionPool()
+	//closeConnectionToCentralServer()
+	//db.Close()
 }

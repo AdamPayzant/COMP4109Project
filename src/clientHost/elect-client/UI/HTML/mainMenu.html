@@ -132,8 +132,7 @@
 
             let networkObject = {};
 
-            networkObject.ip = document.getElementById('ipHost').value
-            networkObject.port = document.getElementById('portHost').value
+            networkObject.ip = document.getElementById('ipHost').value;
 
             ipcRenderer.send('connectToHost', networkObject);
 

@@ -77,8 +77,8 @@ FLUSH PRIVILEGES;
 ### Client
 
 The client was built using electron. It should run on linux, mac, and windows. The current implimentation has the user 
-run the client using electron. Future plans include distributing an client exported as a full electron application.
-(Run from an executable and all libraries are included in the file).
+run the client using electron. ~~Future plans include distributing an client exported as a full electron application.~~
+(See section *Final State of the client*)
 
 ---
 
@@ -181,26 +181,32 @@ Once the setup has been complete, the server is started by the following single 
 
 ### Client
 
-##### Startup
+##### ~~Startup~~
 
 Once the node modules are installed, you can start the program run:
 ```
-nmp start
+nmp start < dir >
 ```
-The client can be configured by modifiying the file `userData.json` 
+The client can be configured by modifiying the file `userData.json` found in the directiony specified as < dir > (The directory which it is run in is default)
+
+The ip of the clienthost and username can be changed in the program, but the address for the centralServer needs to be edited in the `userData.json` file.
+
+The fields in the json file being *clientHostIP* *name* and *centralserverIP* respectively. 
 
 
-##### Operation
+##### ~~Operation~~
 
-Once the client has started enter the address for the host in the 
-center field of the host section and press connect. This should connect 
-you to the host server, if not an error will appear.
+~~Once the client has started enter the address for the host in the center field of the host section and press connect. This should connect you to the host server, if not an error will appear.~~
 
-Once connected, to start chatting press on the  *One time Connection* button.
-Then fill in the username of who you want to talk to and hit *Connect*
+~~Once connected, to start chatting press on the  *One time Connection* button.Then fill in the username of who you want to talk to and hit *Connect*~~
+
+#### Final State of the client
+Due to outstanding sercumstances the client will be unable to operate. In theory the client would be able call the client host and the central server.
+Due to outstanding issues with the implimentation of the grpc calls in the client, it was abandoned in order to hand something in.  Most of the client functions that would have reached out to the other parts have been gutted since they were broken. The one that remains is the Main connection function that creates a connection to both services, and will result in the error that has been plauging me, *the connection has been dropped*.
+
+The fault for this failure should be placed on myself (Anders Sonstenes).
 
 
 ---
-
 
 ## Notes
